@@ -1,5 +1,4 @@
 package com.zonarsystems.pipeline
-import groovy.json.JsonSlurper
 
 class PipelineHelpers implements Serializable {
   def steps
@@ -7,10 +6,9 @@ class PipelineHelpers implements Serializable {
   Map pipeline
 
   PipelineHelpers(steps, settings, pipeline) {
-    JsonSlurper jsonSlurper = new JsonSlurper()
     this.steps = steps
-    this.settings = jsonSlurper.parseText(settings)
-    this.pipeline = jsonSlurper.parseText(pipeline)
+    this.settings = settings
+    this.pipeline = pipeline
   }
 
   def getGitRepo(repoName) {
