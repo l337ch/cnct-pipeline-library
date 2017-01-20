@@ -1,6 +1,6 @@
 #!/usr/bin/groovy
 import com.cloudbees.groovy.cps.NonCPS
-import groovy.json.JsonSlurper
+import groovy.json.JsonSlurperClassic
 
 def call(body) {
   // evaluate the body block, and collect configuration into the object
@@ -14,6 +14,6 @@ def call(body) {
 
 @NonCPS
 def parseJson(jsonText) {
-  final jsonSlurper = new JsonSlurper()
-  return new HashMap<>(jsonSlurper.parseText(jsonText))
+  final jsonSlurper = new JsonSlurperClassic()
+  return jsonSlurper.parseText(jsonText)
 }
