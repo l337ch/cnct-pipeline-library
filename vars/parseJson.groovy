@@ -14,6 +14,6 @@ def call(body) {
 
 @NonCPS
 def parseJson(jsonText) {
-  final jsonSlurper = new JsonSlurperClassic()
+  def jsonSlurper = new JsonSlurperClassic()
   return jsonSlurper.parseText(jsonText)
 }
