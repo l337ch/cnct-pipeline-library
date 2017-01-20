@@ -37,12 +37,16 @@ class PipelineHelpers implements Serializable {
   }
 
   def sendSlackOk(name, jobInfo) {
-    message = 'Build succeeded for ' + jobInfo
-    sendSlack(pipeline.get("name").get("slack"), message, 'good')
+    sendSlack(
+      pipeline.get("name").get("slack"), 
+      'Build succeeded for ' + jobInfo, 
+      'good')
   }
 
   def sendSlackFail(name, jobInfo) {
-    message = 'Build failed for ' + jobInfo
-    sendSlack(pipeline.get("name").get("slack"), message, 'danger')
+    sendSlack(
+      pipeline.get("name").get("slack"), 
+      'Build failed for ' + jobInfo, 
+      'danger')
   }
 }
