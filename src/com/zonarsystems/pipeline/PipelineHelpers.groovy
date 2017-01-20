@@ -2,8 +2,8 @@ package com.zonarsystems.pipeline
 
 class PipelineHelpers implements Serializable {
   def steps
-  Map settings
-  Map pipeline
+  def settings
+  def pipeline
 
   PipelineHelpers(steps, settings, pipeline) {
     this.steps = steps
@@ -12,7 +12,7 @@ class PipelineHelpers implements Serializable {
   }
 
   def getGitRepo(repoName) {
-    return 'git@github.com:' + properties.settings.githubOrg + '/' + repoName + '.git'
+    return 'git@github.com:' + settings.get("githubOrg") + '/' + repoName + '.git'
   }
 
   def githubCheckout(repoName, branchName) {
@@ -38,14 +38,14 @@ class PipelineHelpers implements Serializable {
 
   def sendSlackOk(name, jobInfo) {
     sendSlack(
-      pipeline.get("name").get("slack"), 
+      pipeline.get(name).get("slack"), 
       'Build succeeded for ' + jobInfo, 
       'good')
   }
 
   def sendSlackFail(name, jobInfo) {
     sendSlack(
-      pipeline.get("name").get("slack"), 
+      pipeline.get(name).get("slack"), 
       'Build failed for ' + jobInfo, 
       'danger')
   }
