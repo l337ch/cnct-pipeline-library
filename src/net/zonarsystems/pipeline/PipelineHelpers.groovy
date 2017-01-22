@@ -1,4 +1,4 @@
-package com.zonarsystems.pipeline
+package net.zonarsystems.pipeline
 
 class PipelineHelpers implements Serializable {
   def steps
