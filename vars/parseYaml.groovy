@@ -9,11 +9,11 @@ def call(body) {
   body.delegate = config
   body()
   
-  return parseYaml(config.json)
+  return parseYaml(config.yaml)
 }
 
 @NonCPS
 def parseYaml(yamlText) {
   def yaml = new Yaml()
-  return yaml.load(jsonText)
+  return yaml.load(yamlText)
 }
