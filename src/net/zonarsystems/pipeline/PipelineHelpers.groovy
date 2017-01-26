@@ -11,19 +11,33 @@ class PipelineHelpers implements Serializable {
     this.pipeline = pipeline
   }
 
-  def getGitRepo(repoName) {
-    return 'git@github.com:' + settings.get("githubOrg") + '/' + repoName + '.git'
+  def getGitRepo(pipelineApp) {
+    return "git@github.com:${settings.githubOrg}/" + pipeline.get(pipelineApp).repo + ".git"
   }
 
-  def githubCheckout(repoName, branchName) {
-    steps.git(
-      branch: branchName, 
-      credentialsId: settings.get("githubCredentials"), 
-      url: getGitRepo(repoName))
+  def getHttpsRepo(pipelineApp) {
+    return "https://github.com/${settings.githubOrg}/" + pipeline.get(pipelineApp).repo
   }
 
-  def githubPipelineCheckout(branchName) {
-    githubCheckout(settings.get("pipelineRepo"), branchName)
+  def githubPRCheckout(pipelineApp, prId) {
+    steps.checkout(
+      [
+        $class: 'GitSCM', 
+        branches: [
+          [name: "origin/pr/${prId}"]
+        ], 
+        doGenerateSubmoduleConfigurations: false, 
+        extensions: [], 
+        submoduleCfg: [], 
+        userRemoteConfigs: [
+          [
+            credentialsId: settings.githubScanCredentials, 
+            refspec: "+refs/pull/*/head:refs/remotes/origin/pr/*", 
+            url: getHttpsRepo()
+          ]
+        ]
+      ]
+    )
   }
 
   def sendSlack(channel, message, color) {
