@@ -33,7 +33,7 @@ class PipelineHelpers implements Serializable {
           [
             credentialsId: settings.githubScanCredentials, 
             refspec: "+refs/pull/*/head:refs/remotes/origin/pr/*", 
-            url: getHttpsRepo()
+            url: getHttpsRepo(pipelineApp)
           ]
         ]
       ]
