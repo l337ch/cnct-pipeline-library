@@ -1,5 +1,5 @@
 #!/usr/bin/groovy
-def call(body) {  
+def call() {  
   return getGitSHA()
 }
 
