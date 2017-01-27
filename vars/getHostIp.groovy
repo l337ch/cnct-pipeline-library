@@ -4,5 +4,5 @@ def call(hostname) {
 }
 
 def getHostIp(hostname) {
-  return sh(returnStdout: true, script: "getent hosts ${hostname} | awk '{ print $1 }'").trim()
+  return sh(returnStdout: true, script: "getent hosts ${hostname} | awk '{ print \$1 }'").trim()
 }
