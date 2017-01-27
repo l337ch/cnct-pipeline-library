@@ -16,7 +16,7 @@ def call(body) {
 def getDockerfileFolders(path) {
   def dirs = []
   new File(path).currentDir.eachFile FileType.DIRECTORIES, {
-      dirs << it.name
+    dirs << it
   }
 
   return dirs
