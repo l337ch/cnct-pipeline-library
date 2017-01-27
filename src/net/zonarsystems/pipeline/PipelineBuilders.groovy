@@ -7,7 +7,7 @@ def loadPipelineConfig() {
     'master', 
     'repo-scan-access', 
     ''
-  )
+  ).getConfig()
 }
 
 def loadPipelineSettings() {
@@ -17,5 +17,5 @@ def loadPipelineSettings() {
     'master', 
     'repo-scan-access', 
     ''
-  )
+  ).getConfig()
 }

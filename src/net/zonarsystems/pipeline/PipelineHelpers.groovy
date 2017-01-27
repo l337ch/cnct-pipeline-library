@@ -40,6 +40,26 @@ class PipelineHelpers implements Serializable {
     )
   }
 
+  def githubBranchCheckout(pipelineApp, branchName) {
+    steps.checkout(
+      [
+        $class: 'GitSCM', 
+        branches: [
+          [name: "refs/heads/${branchName}"]
+        ], 
+        doGenerateSubmoduleConfigurations: false, 
+        extensions: [], 
+        submoduleCfg: [], 
+        userRemoteConfigs: [
+          [
+            credentialsId: settings.githubScanCredentials, 
+            url: getHttpsRepo(pipelineApp)
+          ]
+        ]
+      ]
+    )
+  }
+
   def sendSlack(channel, message, color) {
     steps.slackSend( 
       channel: channel, 
