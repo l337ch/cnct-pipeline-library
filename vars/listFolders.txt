@@ -1,0 +1,1 @@
+return an array of subfolders at given path (non recursive)
