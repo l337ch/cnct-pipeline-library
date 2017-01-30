@@ -1,0 +1,1 @@
+Returns an IP address given a DNS name
