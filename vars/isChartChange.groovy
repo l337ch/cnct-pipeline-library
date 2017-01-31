@@ -6,7 +6,9 @@ def call(commitSha) {
 def isChartChange(commitSha) {
   def returnStatus = sh(
     returnStatus: true,
-    script: """set -eo pipefail
+    script: """
+#!/usr/bin/env bash
+set -eo pipefail
 
 get-merge-commit-changes() {
   merge_commit=\"\${commitSha}\"
