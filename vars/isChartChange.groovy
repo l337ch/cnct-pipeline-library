@@ -9,7 +9,7 @@ def isChartChange(commitSha) {
     script: """set -eo pipefail
 
 get-merge-commit-changes() {
-  merge_commit=\"${commitSha}\"
+  merge_commit=\"\${commitSha}\"
 
   # Grab 'Merge: abc1234 def5678' and convert to abc1234..def5678
   child_commit_range=\"\$(git show \"\${merge_commit}\" | grep 'Merge:' | cut -c8- | sed 's/ /../g')\"
@@ -19,7 +19,7 @@ get-merge-commit-changes() {
   git diff-tree --no-commit-id --name-only -r \"\${child_commit_range}\"
 }
 
-echo $(get-merge-commit-changes) | grep 'charts/' 
+echo \$(get-merge-commit-changes) | grep 'charts/' 
     """
   )
 
