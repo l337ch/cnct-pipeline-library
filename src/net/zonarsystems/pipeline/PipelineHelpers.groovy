@@ -83,4 +83,11 @@ class PipelineHelpers implements Serializable {
       'Build failed for ' + jobInfo, 
       'danger')
   }
+
+  def getTestOverrides(name) {
+    def testOverrides = pipeline.get(name).get('test')
+    return testOverrides.inject([]) { result, entry ->
+        result << "${entry.key}=${entry.value.toString()}"
+    }.join(',')
+  }
 }
