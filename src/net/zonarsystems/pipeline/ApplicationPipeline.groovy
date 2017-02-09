@@ -172,11 +172,11 @@ class ApplicationPipeline implements Pipeline, Serializable {
     return currentBuild.rawBuild.getCause(Cause$UpstreamCause) != null
   }
 
+  ApplicationPipeline() {
+    init();
+  }
+
   def pipelineRun() {
-
-    // initialize
-    init()
-
     // add triggers
     def triggers = []
     def upstream = getPipeline().upstream

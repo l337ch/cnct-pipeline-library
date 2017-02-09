@@ -5,54 +5,47 @@ trait Pipeline {
   def application
 
   private ready = false
-  private def setReady() { ready = true }
-  private def bailOnUninitialized() { if (!ready) { throw new Exception('Pipeline not initialized') } }
+  private def bailOnUninitialized() { if (!ready) { throw new Exception('Pipeline not initialized, run init() first') } }
+
+  private env
+  def getEnv() { bailOnUninitialized(); env }
+
+  private settings
+  def getSettings() { bailOnUninitialized(); settings }
+  
+  private pipeline
+  def getPipeline() { bailOnUninitialized(); pipeline[application] }
+  
+  private helpers
+  def getHelpers() { bailOnUninitialized(); helpers }
+
+  // init things that need node context
   def init() {
     steps.podTemplate(label: "env-${getApplication()}", containers: [], volumes: []) {
       steps.node ("env-${getApplication()}") {
-        settings = fileLoader.fromGit(
+        this.settings = fileLoader.fromGit(
           'settings', 
           'https://github.com/samsung-cnct/zonar-pipeline.git', 
           'master', 
           'repo-scan-access', 
           ''
         ).getConfig()
-        setSettings(settings)
 
-        pipeline = fileLoader.fromGit(
+        this.pipeline = fileLoader.fromGit(
           'pipeline', 
           "https://github.com/samsung-cnct/zonar-pipeline.git", 
           'master', 
           "repo-scan-access", 
           ''
         ).getConfig()
-        setPipeline(pipeline)
 
-        setEnv(env)
-        setHelpers()
+        this.env = env
+        this.helpers = new PipelineHelpers(steps, settings, pipeline)
       }
     }
-  }
 
-  private env
-  def getEnv() { bailOnUninitialized(); env }
-  private def setEnv(env) { this.env = env }
-
-  private settings
-  def getSettings() { bailOnUninitialized(); settings }
-  private def setSettings(settings) { this.settings = settings }
-
-  private pipeline
-  def getPipeline() { bailOnUninitialized(); pipeline[application] }
-  private def setPipeline(pipeline) { this.pipeline = pipeline }
-  
-  private helpers
-  def getHelpers() { bailOnUninitialized(); helpers }
-  private def setHelpers() { 
-    if (!settings || !pipeline) {
-      throw new Exception('Set settings and pipeline info first.')
-    } 
-    helpers = new PipelineHelpers(steps, settings, pipeline) 
+    // set ready
+    ready = true
   }
 
   abstract def pipelineRun()  
