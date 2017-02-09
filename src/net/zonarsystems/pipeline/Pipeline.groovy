@@ -1,8 +1,6 @@
 package net.zonarsystems.pipeline
 
 trait Pipeline {                           
-  def steps
-  def application
 
   private ready = false
   private def bailOnUninitialized() { if (!ready) { throw new Exception('Pipeline not initialized, run init() first') } }
@@ -14,13 +12,13 @@ trait Pipeline {
   def getSettings() { bailOnUninitialized(); settings }
   
   private pipeline
-  def getPipeline() { bailOnUninitialized(); pipeline[application] }
+  def getPipeline(application) { bailOnUninitialized(); pipeline[application] }
   
   private helpers
   def getHelpers() { bailOnUninitialized(); helpers }
 
   // init things that need node context
-  def init() {
+  def init(steps) {
     steps.podTemplate(label: "env-${getApplication()}", containers: [], volumes: []) {
       steps.node ("env-${getApplication()}") {
         this.settings = fileLoader.fromGit(
