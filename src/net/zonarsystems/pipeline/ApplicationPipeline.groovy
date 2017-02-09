@@ -21,7 +21,6 @@ class ApplicationPipeline implements Serializable {
   ApplicationPipeline(steps, application) {
     this.steps = steps
     this.application = application
-    init();
   }
 
   def pipelineCheckout() {
@@ -216,7 +215,7 @@ class ApplicationPipeline implements Serializable {
 
   def isDownstreamBuild() {
     bailOnUninitialized()
-    
+
     return currentBuild.rawBuild.getCause(Cause$UpstreamCause) != null
   }
 
