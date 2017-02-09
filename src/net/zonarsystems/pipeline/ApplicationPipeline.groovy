@@ -4,7 +4,15 @@ import hudson.EnvVars
 import org.jenkinsci.plugins.workflow.cps.EnvActionImpl
 import hudson.model.Cause
 
-class ApplicationPipeline implements Pipeline, Serializable {
+class ApplicationPipeline implements Serializable, Pipeline {
+  def steps
+  def application
+
+  ApplicationPipeline(application, steps) {
+    this.steps = steps
+    this.application = application
+    init(this.steps)
+  }
 
   def pipelineCheckout() {
     getSteps().stage ('Checkout') {
@@ -25,7 +33,7 @@ class ApplicationPipeline implements Pipeline, Serializable {
       chartsFolders = listFolders('./charts')
       for (i = 0; i < chartsFolders.size(); i++) {
         def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName}"
+        def upgradeString = "helm upgrade --install ${getPipeline(application).helm} ${getSettings().githubOrg}/${chartName}"
         if (dependencyOverrides) {
           upgradeString += " --set ${dependencyOverrides}"
         }
@@ -177,13 +185,9 @@ class ApplicationPipeline implements Pipeline, Serializable {
   }
 
   def pipelineRun() {
-
-    // init 
-    init()
-
     // add triggers
     def triggers = []
-    def upstream = getPipeline().upstream
+    def upstream = getPipeline(application).upstream
     if (upstream) {
       for (i = 0; i < upstream.size(); i++) {
         triggers << [
@@ -286,7 +290,7 @@ class ApplicationPipeline implements Pipeline, Serializable {
 
               // if pipeline component is marked deployable,
               // deploy it.
-              if (getPipeline().deploy) {
+              if (getPipeline(application).deploy) {
                 upgradeHelmCharts(depVars)
               }
 
