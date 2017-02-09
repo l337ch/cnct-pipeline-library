@@ -8,6 +8,4 @@ trait Pipeline {
   def init() {
     
   }
-
-  abstract def pipelineRun()  
 }
