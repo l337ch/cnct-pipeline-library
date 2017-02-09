@@ -1,6 +1,5 @@
 package net.zonarsystems.pipeline
 
-import groovy.transform.Field
 import hudson.EnvVars
 import org.jenkinsci.plugins.workflow.cps.EnvActionImpl
 import hudson.model.Cause
@@ -177,11 +176,11 @@ class ApplicationPipeline implements Pipeline, Serializable {
     return currentBuild.rawBuild.getCause(Cause$UpstreamCause) != null
   }
 
-  ApplicationPipeline() {
-    init();
-  }
-
   def pipelineRun() {
+
+    // init 
+    init()
+
     // add triggers
     def triggers = []
     def upstream = getPipeline().upstream
