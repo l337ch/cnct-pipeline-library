@@ -46,16 +46,24 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(dependencyOverrides) {
+  def upgradeHelmCharts(dependencyOverrides, dockerImagesTag) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
-      chartsFolders = getScript().listFolders('./charts')
+      def chartsFolders = getScript().listFolders('./charts')
+      def dockerfileFolders = getScript().listFolders('./rootfs')
+
+      def dockerValues = []
+      for (def i = 0; i < dockerfileFolders.size(); i++) {
+        def imageName = dockerfileFolders[i].split('/').last()
+        dockerValues <<  "images.${imageName}=${getSettings().dockerRegistry}/${imageName}:${dockerImagesTag}"
+      }
+
       for (i = 0; i < chartsFolders.size(); i++) {
         def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName}"
+        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion()} --set ${dockerValues.join(',')}"
         if (dependencyOverrides) {
-          upgradeString += " --set ${dependencyOverrides}"
+          upgradeString += ",${dependencyOverrides}"
         }
         // TODO
         getSteps().echo """TODO:
@@ -172,7 +180,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Increment chart version') {
-      getSteps().echo "TODO: Bump version in ./charts/${application} Chart.yaml and push to github"
+      getSteps().echo "TODO: Bump version in ./charts/${application} Chart.yaml"
     }
   }
 
@@ -198,8 +206,14 @@ class ApplicationPipeline implements Serializable {
 
       // write to file
       getSteps().writeFile(file: 'charts/${helmChart}/requirements.yaml', text: changedYAML)
+    }
+  }
 
-      // TODO: push changes back to github
+  def pushChangesToGithub() {
+    bailOnUninitialized()
+
+    getSteps().stage ('Push chnages to github if needed') {
+      getSteps().echo "TODO: push whatever has changed to github"
     }
   }
 
@@ -310,51 +324,41 @@ class ApplicationPipeline implements Serializable {
             // pull kubeconfig from GKE and init helm
             initKubeAndHelm()
 
+            // build docker containers and push them with current SHA tag
+            buildAndPushContainersWithTag(getScript().getGitSha())
+
             // if this is a dependency update build, 
-            // set the version in requirements.yaml
-            // and push to github
-            if (reqVars.size() > 0) {
-              reqVarKeys = new ArrayList(reqVars.keySet())
-              for (def i = 0; i < reqVarKeys.size(); i++ ) {
-                setDependencyVersion(
-                  application, 
-                  reqVarKeys[i], 
-                  reqVars.get(reqVarKeys[i])
-                )
+            if (depVars.size() > 0) {
+              // set the version in requirements.yaml
+              // if required
+              if (reqVars.size() > 0) {
+                reqVarKeys = new ArrayList(reqVars.keySet())
+                for (def i = 0; i < reqVarKeys.size(); i++ ) {
+                  setDependencyVersion(
+                    application, 
+                    reqVarKeys[i], 
+                    reqVars.get(reqVarKeys[i])
+                  )
+                }
               }
-            } else {
-              // if this is an open PR
-              if (getEnvironment().CHANGE_ID != null) {
-                // build docker containers and push them with current SHA tag
-                buildAndPushContainersWithTag(getScript().getGitSha())
-              
-                // lint, and deploy charts to test namespace 
-                // with injected values without uploading to helm repo
-                lintHelmCharts()
-                deployHelmChartsFromPath(
-                  'staging', 
-                  getScript().getGitSha(), 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
-                  depVars
-                )
 
-                // test the deployed charts, destroy the deployments
-                testHelmCharts(
-                  'staging', 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
-                )
-              } else {
-                // build docker containers and push them with current SHA tag
-                buildAndPushContainersWithTag(getScript().getGitSha())
-              } 
-            }
+              // lint, and deploy charts to test namespace 
+              // with injected values without uploading to helm repo
+              lintHelmCharts()
+              deployHelmChartsFromPath(
+                'staging', 
+                getScript().getGitSha(), 
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+                depVars
+              )
 
-            // If this is a merge commit 
-            if (getEnvironment().CHANGE_ID == null) {
+              incrementHelmChartVersion()
+            } 
 
+            if (!getEnvironment().CHANGE_ID) { // this is a merge commit
               // if this change involved changes to the Helm chart
               // or if this is a dependency update
-              // increment the Helm chart version and push to github
+              // increment the Helm chart version
               if (getScript().isChartChange(getScript().getGitSha()) || reqVars.size() > 0) {
                 incrementHelmChartVersion()
               }
@@ -365,7 +369,7 @@ class ApplicationPipeline implements Serializable {
               // if pipeline component is marked deployable,
               // deploy it.
               if (getPipeline().deploy) {
-                upgradeHelmCharts(depVars)
+                upgradeHelmCharts(getScript().getGitSha(), depVars)
               }
 
               // set environment for downstream build (if any) to pickup
@@ -380,7 +384,26 @@ class ApplicationPipeline implements Serializable {
                   "${getSettings().dockerRegistry}/${imageName}:${dockerImagesTag}"
                 )
               } 
-            } 
+            } else { // this is a PR commit
+              // lint, and deploy charts to test namespace 
+              // with injected values without uploading to helm repo
+              lintHelmCharts()
+              deployHelmChartsFromPath(
+                'staging', 
+                getScript().getGitSha(), 
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+                depVars
+              )
+
+              // test the deployed charts, destroy the deployments
+              testHelmCharts(
+                'staging', 
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+              )
+            }
+
+            // commit whatever was changed to github
+            pushChangesToGithub()
           }
         } catch (e) {
           getScript().currentBuild.result = 'FAILURE'
