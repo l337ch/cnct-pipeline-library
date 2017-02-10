@@ -99,7 +99,7 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
-          getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
+          getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
           getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
         }
       }
