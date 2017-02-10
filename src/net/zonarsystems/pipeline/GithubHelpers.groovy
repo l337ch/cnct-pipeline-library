@@ -5,10 +5,14 @@ class GithubHelpers implements Serializable {
 
 	def githubURLBase = 'https://api.github.com/repos/samsung-cnct/'
   	def githubURL = null
+  	def username = null;
+  	def autString = null;
   	
 	GithubHelpers(repoName, username) {
-	    this.githubURL = "this.githubURLBase/${repoName}"
-	    this.authToken = getCredentialsTokenForUser(username)
+	    this.githubURL = "${this.githubURLBase}${repoName}"
+	    def authToken = getCredentialsTokenForUser(username)
+	    this.authString = "${this.username}:${token}".getBytes().encodeBase64().toString();
+	    this.username = username
 	 }
 
 	@NonCPS
@@ -25,11 +29,11 @@ class GithubHelpers implements Serializable {
 	}
 	
 	@NonCPS
-	def getFoldersForRepo(url, username, token) {
+	def getFoldersForPath(path) {
 	    
-	    def authString = "${username}:${token}".getBytes().encodeBase64().toString();
+	    def url = "${githubURL}/${path}"
 	    URLConnection githubURL = new URL(url).openConnection();
-	    githubURL.setRequestProperty("Authorization", "Basic ${authString}");
+	    githubURL.setRequestProperty("Authorization", "Basic ${this.authString}");
 	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(githubURL.getInputStream())));
 	    def dirs = [];
 	    for ( e in contents ) {
@@ -40,21 +44,25 @@ class GithubHelpers implements Serializable {
 	    return dirs;
 	}
 	
-	def loadYAMLFromGithub(url, username, token) {
-	    
+	def loadYAMLFromGithub(filePath) {
+	    def url = "${githubURL}/${filePath}"
 	    def authString = "${username}:${token}".getBytes().encodeBase64().toString();
-	    URLConnection githubURL = new URL(url).openConnection();
-	    githubURL.setRequestProperty("Authorization", "Basic ${authString}");
-	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(githubURL.getInputStream())));
+	    URLConnection conn = new URL(url).openConnection();
+	    conn.setRequestProperty("Authorization", "Basic ${authString}");
+	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(conn.getInputStream())));
 	    Yaml yml = new Yaml();
-	    echo "${contents}"
 	    Map values = (Map)yml.load(new URL(contents.download_url).getText());
 	    return values;
 	
 	}
 	
-	def getImagesForChart(valuesURL, username, token) {
-	    def valuesYAML = loadYAMLFromGithub(valuesURL, username, token);
+	/**
+	 * returns a list of images for a specific chart in this project
+	 */
+	def getImagesForChart(chartName) {
+		
+		def url = "${githubURL}/charts/${chartName}"
+	    def valuesYAML = loadYAMLFromGithub(url);
 	    for (image in valuesYAML.get("images")) {
 	        String key = image.getKey();
 	        String value = image.getValue();
