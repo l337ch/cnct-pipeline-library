@@ -2,6 +2,15 @@ import groovy.json.*
 import org.yaml.snakeyaml.Yaml
 
 class GithubHelpers implements Serializable {
+
+	def githubURLBase = 'https://api.github.com/repos/samsung-cnct/'
+  	def githubURL = null
+  	
+	GithubHelpers(repoName, username) {
+	    this.githubURL = "this.githubURLBase/${repoName}"
+	    this.authToken = getCredentialsTokenForUser(username)
+	 }
+
 	@NonCPS
 	def getCredentialsTokenForUser(username) {
 	  def creds = com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentials(
@@ -34,7 +43,7 @@ class GithubHelpers implements Serializable {
 	def loadYAMLFromGithub(url, username, token) {
 	    
 	    def authString = "${username}:${token}".getBytes().encodeBase64().toString();
-	     URLConnection githubURL = new URL(url).openConnection();
+	    URLConnection githubURL = new URL(url).openConnection();
 	    githubURL.setRequestProperty("Authorization", "Basic ${authString}");
 	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(githubURL.getInputStream())));
 	    Yaml yml = new Yaml();
@@ -54,25 +63,6 @@ class GithubHelpers implements Serializable {
 	    return valuesYAML.get("images");
 	}
 	
-	def username = 'zonarbot'
-	def token = getCredentialsTokenForUser(username)
-	
-	def url = 'https://api.github.com/repos/samsung-cnct/zonar-gprsd/contents/charts'
-	//def url = 'https://api.github.com/repos/ratpack/ratpack/contents/ratpack-groovy/src/main/java/ratpack/groovy'
-	node {
-	   echo 'Hello World'
-	   dirs = getFoldersForRepo(url,username,token);
-	   for (dir in dirs) {
-	        print "name = ${dir}"
-	        //def valuesURL = "https://api.github.com/repos/samsung-cnct/zonar-gprsd/contents/charts/${dir}/values.yaml"
-	        def valuesURL = "https://api.github.com/repos/samsung-cnct/zonar-gprsd/contents/charts/${dir}/values.yaml"
-	        getImagesForChart(valuesURL, username, token)
-	       
-	   }
-	
-	//cause = build.getCause(hudson.model.Cause.UserIdCause.class);
-	//username = cause.getUserName()
-	//User id = User.get(cause.getUserId())
 	
 	}
 }
