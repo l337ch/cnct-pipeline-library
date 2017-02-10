@@ -148,7 +148,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Test Helm chart(s)') {
-      chartsFolders = getScript().listFolders('./charts')
+      def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           getSteps().echo "TODO: test ${chartsFolders[i]} deployed to ${namespace} namespace"
@@ -180,7 +180,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Set dependency version') {
-      reqYaml = getScript().parseYaml {
+      def reqYaml = getScript().parseYaml {
         yaml = readTrusted("charts/${helmChart}/requirements.yaml")
       }
 
@@ -266,7 +266,7 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < upstream.size(); i++) {
         triggers << [
           $class: 'jenkins.triggers.ReverseBuildTrigger', 
-          upstreamProjects: "${pipeline.get(upstream[i]).pipeline}/master", 
+          upstreamProjects: "${getPipeline().get(upstream[i]).pipeline}/master", 
           threshold: hudson.model.Result.SUCCESS
         ]
       } 
@@ -334,14 +334,14 @@ class ApplicationPipeline implements Serializable {
                 deployHelmChartsFromPath(
                   'staging', 
                   getScript().getGitSha(), 
-                  "${pipeline.get(PIPELINE).helm}-${getEnvironment().BUILD_NUMBER}",
+                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
                   depVars
                 )
 
                 // test the deployed charts, destroy the deployments
                 testHelmCharts(
                   'staging', 
-                  "${pipeline.get(PIPELINE).helm}-${getEnvironment().BUILD_NUMBER}"
+                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
                 )
               } else {
                 // build docker containers and push them with current SHA tag
