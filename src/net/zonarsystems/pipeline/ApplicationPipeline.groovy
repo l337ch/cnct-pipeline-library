@@ -16,6 +16,7 @@ class ApplicationPipeline implements Serializable {
 
   def pipeline
   def getPipeline() { bailOnUninitialized(); pipeline[application] }
+  def getPipeline(app) { bailOnUninitialized(); pipeline[app] }
 
   def helpers
   
@@ -280,7 +281,7 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < upstream.size(); i++) {
         triggers << [
           $class: 'jenkins.triggers.ReverseBuildTrigger', 
-          upstreamProjects: "${getPipeline().get(upstream[i]).pipeline}/master", 
+          upstreamProjects: "${getPipeline(upstream[i]).pipeline}/master", 
           threshold: hudson.model.Result.SUCCESS
         ]
       } 
