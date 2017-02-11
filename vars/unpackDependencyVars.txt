@@ -1,4 +1,4 @@
-Unpacks passed in upstream environment into a helm --set string
+Returns a helm --set string for a given upstream environment value
 Environment variables must start with HELMPARAM_
 _'s are replaced with .'s
 

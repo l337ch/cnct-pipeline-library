@@ -1,1 +1,1 @@
-Converts a given object to block-style yaml string
+Returns a block-style YAML string for a given object
