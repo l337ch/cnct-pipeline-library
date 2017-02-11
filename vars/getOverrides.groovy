@@ -8,13 +8,13 @@ def call(body) {
   body.delegate = config
   body()
   
-  return unpackDependencyVars(config.pipeline)
+  return unpackDependencyVars(config.pipeline, config.type)
 }
 
 @NonCPS
-def getTestOverrides(pipeline) {
-  def testOverrides = pipeline.get('test')
-  return testOverrides.inject([]) { result, entry ->
+def getOverrides(pipeline, overrideType) {
+  def overrides = pipeline.overrides.get(overrideType)
+  return overrides.inject([]) { result, entry ->
     result << "${entry.key}=${entry.value.toString()}"
   }.join(',')
 }
