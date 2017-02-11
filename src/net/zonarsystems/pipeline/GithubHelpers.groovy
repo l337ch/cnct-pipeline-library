@@ -1,3 +1,5 @@
+
+
 import groovy.json.*
 import org.yaml.snakeyaml.Yaml
 
@@ -25,6 +27,7 @@ class GithubHelpers implements Serializable {
 	    if ( c ) {
 	        println "found credential ${c.id} for username ${c.username} with password ${c.password}"
 	        return c.password
+			
 	    }
 	}
 	
@@ -71,6 +74,4 @@ class GithubHelpers implements Serializable {
 	    return valuesYAML.get("images");
 	}
 	
-	
-	}
 }
