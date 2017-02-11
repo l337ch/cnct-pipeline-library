@@ -1,1 +1,1 @@
-Parses a string of JSON
+Returns a map object given a JSON string
