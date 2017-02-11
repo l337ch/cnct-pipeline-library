@@ -9,20 +9,28 @@ For example, given pipeline definition:
       slack: '#ping-zonar',
       helm: 'zonar-gprsd',
       upstream: ['loadbalancer'],
-      test: [
-        'service.nodePort': 30162,
-        'loadbalancer.loadBalancerIp': '10.142.15.200',
-        'loadbalancer.serviceNodePort': 30162,
-        'loadbalancer.udpHealthNodePort': 30163       
-      ],
+      overrides:
+        staging: [
+          'service.nodePort': 30162,
+          'loadbalancer.loadBalancerIp': '10.142.15.200',
+          'loadbalancer.serviceNodePort': 30162,
+          'loadbalancer.udpHealthNodePort': 30163       
+        ],
+        prod: [
+          'service.nodePort': 30062,
+          'loadbalancer.loadBalancerIp': '10.142.15.200',
+          'loadbalancer.serviceNodePort': 30062,
+          'loadbalancer.udpHealthNodePort': 30063       
+        ]
       deploy: true
     ]
   ]
 
-And a call to getTestOverrides:
+And a call to getOverrides:
 
-  testOverrides = getTestOverrides {
-    pipeline = pipelines.gprsd
+  testOverrides = getOverrides {
+    pipeline = pipelines.gprsd,
+    type = 'staging'
   }
   println testOverrides
 
