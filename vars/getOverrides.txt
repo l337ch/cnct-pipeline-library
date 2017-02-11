@@ -1,4 +1,4 @@
-Returns a helm-compatible --set list for a pipeline definition 'test' section
+Returns a helm-compatible --set list for a pipeline definition 'overrides' section
 
 For example, given pipeline definition:
   pipelines = [
