@@ -5,13 +5,14 @@ import org.yaml.snakeyaml.Yaml
 
 class GithubHelpers implements Serializable {
 
-	def githubURLBase = 'https://api.github.com/repos/samsung-cnct/'
+	def githubURLBase = 'https://api.github.com/'
+	def orgName = 'samsung-cnct'
   	def githubURL = null
   	def username = null;
   	def autString = null;
   	
-	GithubHelpers(repoName, username) {
-	    this.githubURL = "${this.githubURLBase}${repoName}"
+	GithubHelpers(repoName, orgName, username) {
+	    this.githubURL = "${this.githubURLBase}${orgName}/${repoName}"
 	    def authToken = getCredentialsTokenForUser(username)
 	    this.authString = "${this.username}:${token}".getBytes().encodeBase64().toString();
 	    this.username = username
