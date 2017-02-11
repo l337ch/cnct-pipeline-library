@@ -1,1 +1,1 @@
-Returns an IP address given a DNS name
+Returns an IP address for a given DNS hostname

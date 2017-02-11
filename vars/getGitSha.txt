@@ -1,1 +1,1 @@
-return last commit SHA
+Returns the last commit SHA checksum
