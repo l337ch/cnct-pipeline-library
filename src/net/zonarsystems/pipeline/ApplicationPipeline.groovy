@@ -152,7 +152,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     chartYaml = getScript().parseYaml {
-      yaml = readTrusted("charts/${application}/Chart.yaml")
+      yaml = getSteps().readTrusted("charts/${application}/Chart.yaml")
     }
 
     return chartYaml.version
@@ -166,28 +166,34 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def setDefaultValues(helmChart, gitSha) {
+  def setDefaultValues(gitSha) {
     bailOnUninitialized()
 
     getSteps().stage ('Inject new docker tags into values.yaml') {
 
-      def reqYaml = getScript().parseYaml {
-        yaml = readTrusted("charts/${helmChart}/values.yaml")
-      }
+      def chartsFolders = getScript().listFolders('./charts')
+      for (def i = 0; i < chartsFolders.size(); i++) {
+        def reqYaml = getScript().parseYaml {
+          yaml = getSteps().readTrusted("${chartsFolders[i]}/values.yaml")
+        }
 
-      def dockerfileFolders = getScript().listFolders('./rootfs')
-      for (def i = 0; i < dockerfileFolders.size(); i++) {
-        def imageName = dockerfileFolders[i].split('/').last()
-        reqYaml.get('images').put(imageName, "${getSettings().dockerRegistry}/${imageName}:${gitSha}")
-      }
+        def dockerfileFolders = getScript().listFolders('./rootfs')
+        for (def k = 0; k < dockerfileFolders.size(); k++) {
+          def imageName = dockerfileFolders[k].split('/').last()
 
-      // dump YAML back
-      def changedYAML = getScript().toYaml {
-        obj = reqYaml
-      }
+          if (reqYaml.get('images') && reqYaml.get('images').get(imageName)) {
+            reqYaml.get('images').put(imageName, "${getSettings().dockerRegistry}/${imageName}:${gitSha}")
+          }
+        }
 
-      // write to file
-      getSteps().writeFile(file: 'charts/${helmChart}/values.yaml', text: changedYAML)
+        // dump YAML back
+        def changedYAML = getScript().toYaml {
+          obj = reqYaml
+        }
+
+        // write to file
+        getSteps().writeFile(file: "${chartsFolders[i]}/values.yaml", text: changedYAML)
+      }
     }
   }
 
@@ -260,8 +266,8 @@ class ApplicationPipeline implements Serializable {
             // build docker containers and push them with current SHA tag
             buildAndPushContainersWithTag(getScript().getGitSha())
 
-            // inject new docker tags into dafault values.yaml
-            setDefaultValues(helmChart, gitSha)
+            // inject new docker tags into default values.yaml
+            setDefaultValues(getScript().getGitSha())
 
             // update chart semver metadata
             updateChartVersionMetadata(getScript().getGitSha())
