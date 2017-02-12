@@ -270,7 +270,7 @@ class ApplicationPipeline implements Serializable {
             if (getEnvironment().CHANGE_ID) {
 
               def testOverrides = getOverrides {
-                pipeline = getPipeline(),
+                pipeline = getPipeline()
                 type = 'staging'
               }
 
@@ -301,7 +301,7 @@ class ApplicationPipeline implements Serializable {
               // deploy it.
               if (getPipeline().deploy) {
                 def prodOverrides = getOverrides {
-                  pipeline = getPipeline(),
+                  pipeline = getPipeline()
                   type = 'prod'
                 }
                 upgradeHelmCharts(getScript().getGitSha(), prodOverrides)
