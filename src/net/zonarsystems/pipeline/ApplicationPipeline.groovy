@@ -1,8 +1,5 @@
 package net.zonarsystems.pipeline
-
-import hudson.EnvVars
-import org.jenkinsci.plugins.workflow.cps.EnvActionImpl
-import hudson.model.Cause
+import java.util.regex.Pattern
 
 class ApplicationPipeline implements Serializable {
   def steps
@@ -52,13 +49,12 @@ class ApplicationPipeline implements Serializable {
 
     getSteps().stage ('Deploy Helm chart(s)') {
       def chartsFolders = getScript().listFolders('./charts')
-      for (i = 0; i < chartsFolders.size(); i++) {
+      for (def i = 0; i < chartsFolders.size(); i++) {
         def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion()}"
+        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)}"
         if (overrides) {
           upgradeString += " --set ${overrides}"
         }
-        // TODO
         getSteps().echo """TODO:
   helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}
   ${upgradeString}
@@ -129,7 +125,7 @@ class ApplicationPipeline implements Serializable {
           commandString += " --set ${testOverrides}"
         }
 
-        getSteps().echo "TODO: ${commandString}"
+        getSteps().sh "${commandString}"
       }
     }
   }
@@ -142,17 +138,17 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           getSteps().echo "TODO: test ${chartsFolders[i]} deployed to ${namespace} namespace"
-          getSteps().echo "TODO: helm delete --purge ${releaseName}"
+          getSteps().sh "helm delete --purge ${releaseName}"
         }
       }
     }
   }
 
-  def getHelmChartVersion() {
+  def getHelmChartVersion(chartName) {
     bailOnUninitialized()
 
-    chartYaml = getScript().parseYaml {
-      yaml = getSteps().readTrusted("charts/${application}/Chart.yaml")
+    def chartYaml = getScript().parseYaml {
+      yaml = getSteps().readTrusted("charts/${chartName}/Chart.yaml")
     }
 
     return chartYaml.version
@@ -161,8 +157,34 @@ class ApplicationPipeline implements Serializable {
   def updateChartVersionMetadata(sha) {
     bailOnUninitialized()
 
-    getSteps().stage ('Increment chart version') {
-      getSteps().echo "TODO: udpated semver metadata in ./charts/${application} Chart.yaml to ${sha}"
+    getSteps().stage ('Increment chart(s) version(s)') {
+      def chartsFolders = getScript().listFolders('./charts')
+      for (def i = 0; i < chartsFolders.size(); i++) {
+
+        // read in Chart.yaml
+        def chartYaml = getScript().parseYaml {
+          yaml = getSteps().readTrusted("${chartsFolders[i]}/Chart.yaml")
+        }
+        
+        def verComponents = []
+        verComponents.addAll(chartYaml.version.toString().split(Pattern.quote('+')))
+        
+        if (verComponents.size() > 1) {
+          verComponents[1] = sha
+        } else {
+          verComponents << sha
+        }
+
+        chartYaml.version = verComponents.join('+')
+
+        // dump YAML back
+        def changedYAML = getScript().toYaml {
+          obj = chartYaml
+        }
+
+        // write to file
+        getSteps().writeFile(file: "${chartsFolders[i]}/Chart.yaml", text: changedYAML)
+      }
     }
   }
 
@@ -200,8 +222,15 @@ class ApplicationPipeline implements Serializable {
   def pushChangesToGithub() {
     bailOnUninitialized()
 
-    getSteps().stage ('Push chnages to github if needed') {
-      getSteps().echo "TODO: push whatever has changed to github"
+    getSteps().stage ('Push chagens to github if needed') {
+
+      getSteps().sshagent (credentials: [getSettings().githubCredentials]) {
+        sh """
+  git add .
+  git commit -m 'Pushing metadata changes for ${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})'
+  git push origin master
+  """
+      }
     }
   }
 
@@ -275,9 +304,8 @@ class ApplicationPipeline implements Serializable {
             // if this is a Pull Request change
             if (getEnvironment().CHANGE_ID) {
 
-              def testOverrides = getOverrides {
-                pipeline = getPipeline()
-                type = 'staging'
+              def testOverrides = getScript().getOverrides {
+                overrides = [pipeline: getPipeline(), type: 'staging']
               }
 
               // lint, and deploy charts to staging namespace 
@@ -306,9 +334,8 @@ class ApplicationPipeline implements Serializable {
               // if pipeline component is marked deployable,
               // deploy it.
               if (getPipeline().deploy) {
-                def prodOverrides = getOverrides {
-                  pipeline = getPipeline()
-                  type = 'prod'
+                def prodOverrides = getScript().getOverrides {
+                  overrides = [pipeline: getPipeline(), type: 'prod']
                 }
                 upgradeHelmCharts(getScript().getGitSha(), prodOverrides)
               }
