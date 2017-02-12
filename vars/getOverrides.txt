@@ -29,7 +29,7 @@ For example, given pipeline definition:
 And a call to getOverrides:
 
   testOverrides = getOverrides {
-    pipeline = pipelines.gprsd,
+    pipeline = pipelines.gprsd
     type = 'staging'
   }
   println testOverrides
