@@ -178,7 +178,7 @@ class ApplicationPipeline implements Serializable {
       def dockerfileFolders = getScript().listFolders('./rootfs')
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         def imageName = dockerfileFolders[i].split('/').last()
-        reqYaml.get('images').get(imageName) = "${getSettings().dockerRegistry}/${imageName}:${gitSha}"
+        reqYaml.get('images').put(imageName, "${getSettings().dockerRegistry}/${imageName}:${gitSha}")
       }
 
       // dump YAML back
