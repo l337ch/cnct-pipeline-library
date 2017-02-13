@@ -203,8 +203,9 @@ class ApplicationPipeline implements Serializable {
         for (def k = 0; k < dockerfileFolders.size(); k++) {
           def imageName = dockerfileFolders[k].split('/').last()
 
-          if (reqYaml.get('images') && reqYaml.get('images').get(imageName)) {
-            reqYaml.get('images').put(imageName, "${getSettings().dockerRegistry}/${imageName}:${gitSha}")
+          if (reqYaml.images && reqYaml.images[imageName]) {
+            // toString() is required, otherwise snakeyaml will serialize this into something that is not a string.
+            reqYaml.images[imageName] = "${getSettings().dockerRegistry}/${imageName}:${gitSha}".toString()
           }
         }
 
@@ -222,14 +223,14 @@ class ApplicationPipeline implements Serializable {
   def pushChangesToGithub() {
     bailOnUninitialized()
 
-    getSteps().stage ('Push chagens to github if needed') {
-
-      getSteps().sshagent (credentials: [getSettings().githubCredentials]) {
-        sh """
-  git add .
-  git commit -m 'Pushing metadata changes for ${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})'
-  git push origin master
-  """
+    getSteps().stage ('Push changes to github if needed') {
+      getSteps().withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: getSettings().githubScanCredentials, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+        getSteps().sh("git config user.name \"${getSettings().githubAdmin}\"")
+        getSteps().sh("git config user.email \"${getSettings().githubAdmin}@zonarsystems.net\"")
+        getSteps().sh("git checkout master")
+        getSteps().sh("git add .")
+        getSteps().sh("git commit -m \"${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})\"")
+        getSteps().sh("git push https://${getEnvironment().GIT_USERNAME}:${getEnvironment().GIT_PASSWORD}@github.com/${getSettings().githubOrg}/${getPipeline().repo} --all")
       }
     }
   }
