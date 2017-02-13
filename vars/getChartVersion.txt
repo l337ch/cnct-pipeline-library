@@ -1,1 +1,1 @@
-Returns version for a given helm chart
+Returns the version for a given helm chart

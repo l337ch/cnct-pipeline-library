@@ -1,1 +1,1 @@
-Return true if a given commit SHA has changes under /charts
+Returns true if a commit with a given SHA has changes under /charts

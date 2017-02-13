@@ -1,8 +1,5 @@
 package net.zonarsystems.pipeline
-
-import hudson.EnvVars
-import org.jenkinsci.plugins.workflow.cps.EnvActionImpl
-import hudson.model.Cause
+import java.util.regex.Pattern
 
 class ApplicationPipeline implements Serializable {
   def steps
@@ -47,26 +44,17 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(dependencyOverrides, dockerImagesTag) {
+  def upgradeHelmCharts(dockerImagesTag, overrides) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
       def chartsFolders = getScript().listFolders('./charts')
-      def dockerfileFolders = getScript().listFolders('./rootfs')
-
-      def dockerValues = []
-      for (def i = 0; i < dockerfileFolders.size(); i++) {
-        def imageName = dockerfileFolders[i].split('/').last()
-        dockerValues <<  "images.${imageName}=${getSettings().dockerRegistry}/${imageName}:${dockerImagesTag}"
-      }
-
-      for (i = 0; i < chartsFolders.size(); i++) {
+      for (def i = 0; i < chartsFolders.size(); i++) {
         def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion()} --set ${dockerValues.join(',')}"
-        if (dependencyOverrides) {
-          upgradeString += ",${dependencyOverrides}"
+        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)}"
+        if (overrides) {
+          upgradeString += " --set ${overrides}"
         }
-        // TODO
         getSteps().echo """TODO:
   helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}
   ${upgradeString}
@@ -126,29 +114,18 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def deployHelmChartsFromPath(namespace, dockerImagesTag, releaseName, dependencyOverrides) {
+  def deployHelmChartsFromPath(namespace, releaseName, testOverrides) {
     bailOnUninitialized()
 
     getSteps().stage ("Deploy Helm chart(s) to ${namespace} namespace") {
       def chartsFolders = getScript().listFolders('./charts')
-      def dockerfileFolders = getScript().listFolders('./rootfs')
-
-      def dockerValues = []
-      for (def i = 0; i < dockerfileFolders.size(); i++) {
-        def imageName = dockerfileFolders[i].split('/').last()
-        dockerValues <<  "images.${imageName}=${getSettings().dockerRegistry}/${imageName}:${dockerImagesTag}"
-      }
-
       for (def i = 0; i < chartsFolders.size(); i++) {
-        def chartName = chartsFolders[i].split('/').last()
-        if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def commandString = "helm install ${chartsFolders[i]} --name ${releaseName} --namespace ${namespace} --set ${dockerValues.join(',')}" 
-          if (dependencyOverrides) {
-            commandString += ",${dependencyOverrides}"
-          }
-
-          getSteps().echo "TODO: ${commandString}"
+        def commandString = "helm install ${chartsFolders[i]} --name ${releaseName} --namespace ${namespace}" 
+        if (testOverrides) {
+          commandString += " --set ${testOverrides}"
         }
+
+        getSteps().sh "${commandString}"
       }
     }
   }
@@ -161,84 +138,101 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           getSteps().echo "TODO: test ${chartsFolders[i]} deployed to ${namespace} namespace"
-          getSteps().echo "TODO: helm delete --purge ${releaseName}"
+          getSteps().sh "helm delete --purge ${releaseName}"
         }
       }
     }
   }
 
-  def getHelmChartVersion() {
+  def getHelmChartVersion(chartName) {
     bailOnUninitialized()
 
-    chartYaml = getScript().parseYaml {
-      yaml = readTrusted("charts/${application}/Chart.yaml")
+    def chartYaml = getScript().parseYaml {
+      yaml = getSteps().readTrusted("charts/${chartName}/Chart.yaml")
     }
 
     return chartYaml.version
   }
 
-  def incrementHelmChartVersion() {
+  def updateChartVersionMetadata(sha) {
     bailOnUninitialized()
 
-    getSteps().stage ('Increment chart version') {
-      getSteps().echo "TODO: Bump version in ./charts/${application} Chart.yaml"
+    getSteps().stage ('Increment chart(s) version(s)') {
+      def chartsFolders = getScript().listFolders('./charts')
+      for (def i = 0; i < chartsFolders.size(); i++) {
+
+        // read in Chart.yaml
+        def chartYaml = getScript().parseYaml {
+          yaml = getSteps().readTrusted("${chartsFolders[i]}/Chart.yaml")
+        }
+        
+        def verComponents = []
+        verComponents.addAll(chartYaml.version.toString().split(Pattern.quote('+')))
+        
+        if (verComponents.size() > 1) {
+          verComponents[1] = sha
+        } else {
+          verComponents << sha
+        }
+
+        chartYaml.version = verComponents.join('+')
+
+        // dump YAML back
+        def changedYAML = getScript().toYaml {
+          obj = chartYaml
+        }
+
+        // write to file
+        getSteps().writeFile(file: "${chartsFolders[i]}/Chart.yaml", text: changedYAML)
+      }
     }
   }
 
-  def setDependencyVersion(helmChart, dependencyName, dependencyVer) {
+  def setDefaultValues(gitSha) {
     bailOnUninitialized()
 
-    getSteps().stage ('Set dependency version') {
-      def reqYaml = getScript().parseYaml {
-        yaml = readTrusted("charts/${helmChart}/requirements.yaml")
-      }
+    getSteps().stage ('Inject new docker tags into values.yaml') {
 
-      // set version
-      for (def i = 0; i < reqYaml.get('dependencies').size(); i++) {
-        if (reqYaml.get('dependencies')[i].name == dependencyName) {
-          reqYaml.get('dependencies')[i].version = dependencyVer
+      def chartsFolders = getScript().listFolders('./charts')
+      for (def i = 0; i < chartsFolders.size(); i++) {
+        def reqYaml = getScript().parseYaml {
+          yaml = getSteps().readTrusted("${chartsFolders[i]}/values.yaml")
         }
-      }
 
-      // dump YAML back
-      def changedYAML = getScript().toYaml {
-        obj = reqYaml
-      }
+        def dockerfileFolders = getScript().listFolders('./rootfs')
+        for (def k = 0; k < dockerfileFolders.size(); k++) {
+          def imageName = dockerfileFolders[k].split('/').last()
 
-      // write to file
-      getSteps().writeFile(file: 'charts/${helmChart}/requirements.yaml', text: changedYAML)
+          if (reqYaml.images && reqYaml.images[imageName]) {
+            // toString() is required, otherwise snakeyaml will serialize this into something that is not a string.
+            reqYaml.images[imageName] = "${getSettings().dockerRegistry}/${imageName}:${gitSha}".toString()
+          }
+        }
+
+        // dump YAML back
+        def changedYAML = getScript().toYaml {
+          obj = reqYaml
+        }
+
+        // write to file
+        getSteps().writeFile(file: "${chartsFolders[i]}/values.yaml", text: changedYAML)
+      }
     }
   }
 
   def pushChangesToGithub() {
     bailOnUninitialized()
 
-    getSteps().stage ('Push chnages to github if needed') {
-      getSteps().echo "TODO: push whatever has changed to github"
+    getSteps().stage ('Push changes to github if needed') {
+      getSteps().withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: getSettings().githubScanCredentials, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+        getSteps().sh("git config user.name \"${getSettings().githubAdmin}\"")
+        getSteps().sh("git config user.email \"${getSettings().githubAdmin}@zonarsystems.net\"")
+        getSteps().sh("git checkout master")
+        getSteps().sh("git add .")
+        getSteps().sh("git commit -m \"${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})\"")
+        getSteps().sh("git push https://${getEnvironment().GIT_USERNAME}:${getEnvironment().GIT_PASSWORD}@github.com/${getSettings().githubOrg}/${getPipeline().repo} --all")
+      }
     }
-  }
-
-  def getUpstreamEnv() {
-    bailOnUninitialized()
-
-    def upstreamEnv = new EnvVars()
-    def upstreamCause = getScript().currentBuild.rawBuild.getCause(Cause$UpstreamCause)
-
-    if (upstreamCause) {
-      def upstreamJobName = upstreamCause.properties.upstreamProject
-      def upstreamBuild = Jenkins.instance
-                              .getItemByFullName(upstreamJobName)
-                              .getLastBuild()
-      upstreamEnv = upstreamBuild.getAction(EnvActionImpl).getEnvironment()
-    }
-
-    return upstreamEnv
-  }
-
-  def isDownstreamBuild() {
-    bailOnUninitialized()
-
-    return getScript().currentBuild.rawBuild.getCause(Cause$UpstreamCause) != null
   }
 
   // init things that need node context
@@ -274,22 +268,6 @@ class ApplicationPipeline implements Serializable {
   def pipelineRun() {
     bailOnUninitialized();
 
-    // add triggers
-    def triggers = []
-    def upstream = getPipeline().upstream
-    if (upstream) {
-      for (def i = 0; i < upstream.size(); i++) {
-        triggers << [
-          $class: 'jenkins.triggers.ReverseBuildTrigger', 
-          upstreamProjects: "${getPipeline(upstream[i]).pipeline}/master", 
-          threshold: hudson.model.Result.SUCCESS
-        ]
-      } 
-    }
-    getSteps().properties([
-      getSteps().pipelineTriggers([triggers: triggers])
-    ])
-
     getSteps().podTemplate(label: "CI-${application}", containers: [
       getSteps().containerTemplate(name: 'gke', image: 'gcr.io/sds-readiness/jenkins-gke:latest', ttyEnabled: true, command: 'cat', alwaysPullImage: true),
     ],
@@ -306,16 +284,6 @@ class ApplicationPipeline implements Serializable {
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
 
-        // get requirements update variables from upstream
-        def reqVars = getScript().unpackReqVars {
-          upstreamEnv = getUpstreamEnv()
-        }
-
-        // get helm overrides variable from upstream
-        def depVars = getScript().unpackDependencyVars {
-          upstreamEnv = getUpstreamEnv()
-        }
-
         try {
           // Checkout source code, from PR or master
           pipelineCheckout()
@@ -328,72 +296,28 @@ class ApplicationPipeline implements Serializable {
             // build docker containers and push them with current SHA tag
             buildAndPushContainersWithTag(getScript().getGitSha())
 
-            // if this is a dependency update build, 
-            if (depVars.size() > 0) {
-              // set the version in requirements.yaml
-              // if required
-              if (reqVars.size() > 0) {
-                reqVarKeys = new ArrayList(reqVars.keySet())
-                for (def i = 0; i < reqVarKeys.size(); i++ ) {
-                  setDependencyVersion(
-                    application, 
-                    reqVarKeys[i], 
-                    reqVars.get(reqVarKeys[i])
-                  )
-                }
+            // inject new docker tags into default values.yaml
+            setDefaultValues(getScript().getGitSha())
+
+            // update chart semver metadata
+            updateChartVersionMetadata(getScript().getGitSha())
+
+            // if this is a Pull Request change
+            if (getEnvironment().CHANGE_ID) {
+
+              def testOverrides = getScript().getOverrides {
+                overrides = [pipeline: getPipeline(), type: 'staging']
               }
 
-              // lint, and deploy charts to test namespace 
-              // with injected values without uploading to helm repo
+              // lint, and deploy charts to staging namespace 
+              // with injected docker tag values
+              // and injected test values 
+              // without uploading to helm repo
               lintHelmCharts()
               deployHelmChartsFromPath(
-                'staging', 
-                getScript().getGitSha(), 
+                'staging',  
                 "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
-                depVars
-              )
-
-              incrementHelmChartVersion()
-            } 
-
-            if (!getEnvironment().CHANGE_ID) { // this is a merge commit
-              // if this change involved changes to the Helm chart
-              // or if this is a dependency update
-              // increment the Helm chart version
-              if (getScript().isChartChange(getScript().getGitSha()) || reqVars.size() > 0) {
-                incrementHelmChartVersion()
-              }
-              
-              // package and upload charts to helm repo
-              uploadChartsToRepo()
-
-              // if pipeline component is marked deployable,
-              // deploy it.
-              if (getPipeline().deploy) {
-                upgradeHelmCharts(getScript().getGitSha(), depVars)
-              }
-
-              // set environment for downstream build (if any) to pickup
-              if (getScript().isChartChange(getScript().getGitSha())) {
-                getEnvironment().put("HELMREQ_${application}", getHelmChartVersion())
-              }
-              def dockerfileFolders = getScript().listFolders('./rootfs')
-              for (def i = 0; i < dockerfileFolders.size(); i++) {
-                def imageName = dockerfileFolders[i].split('/').last()
-                getEnvironment().put(
-                  "HELMPARAM_${application}_images_${imageName}", 
-                  "${getSettings().dockerRegistry}/${imageName}:${dockerImagesTag}"
-                )
-              } 
-            } else { // this is a PR commit
-              // lint, and deploy charts to test namespace 
-              // with injected values without uploading to helm repo
-              lintHelmCharts()
-              deployHelmChartsFromPath(
-                'staging', 
-                getScript().getGitSha(), 
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
-                depVars
+                testOverrides
               )
 
               // test the deployed charts, destroy the deployments
@@ -401,10 +325,22 @@ class ApplicationPipeline implements Serializable {
                 'staging', 
                 "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
               )
-            }
+            } else {
+              // commit changes to Chart.yaml and vlaues.yaml to github
+              pushChangesToGithub()
 
-            // commit whatever was changed to github
-            pushChangesToGithub()
+              // package and upload charts to helm repo
+              uploadChartsToRepo()
+
+              // if pipeline component is marked deployable,
+              // deploy it.
+              if (getPipeline().deploy) {
+                def prodOverrides = getScript().getOverrides {
+                  overrides = [pipeline: getPipeline(), type: 'prod']
+                }
+                upgradeHelmCharts(getScript().getGitSha(), prodOverrides)
+              }
+            }
           }
         } catch (e) {
           getScript().currentBuild.result = 'FAILURE'

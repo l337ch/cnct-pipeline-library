@@ -1,0 +1,38 @@
+Returns a helm-compatible --set list for a pipeline definition 'overrides' section
+
+For example, given pipeline definition:
+  pipelines = [
+    gprsd: [
+      desc: 'Pipeline for continous delivery of gprsd app',
+      pipeline: 'gprsd-pipeline', 
+      repo: 'zonar-gprsd',
+      slack: '#ping-zonar',
+      helm: 'zonar-gprsd',
+      upstream: ['loadbalancer'],
+      overrides:
+        staging: [
+          'service.nodePort': 30162,
+          'loadbalancer.loadBalancerIp': '10.142.15.200',
+          'loadbalancer.serviceNodePort': 30162,
+          'loadbalancer.udpHealthNodePort': 30163       
+        ],
+        prod: [
+          'service.nodePort': 30062,
+          'loadbalancer.loadBalancerIp': '10.142.15.200',
+          'loadbalancer.serviceNodePort': 30062,
+          'loadbalancer.udpHealthNodePort': 30063       
+        ]
+      deploy: true
+    ]
+  ]
+
+And a call to getOverrides:
+
+  testOverrides = getOverrides {
+    overrides = [pipeline: pipelines.gprsd, type: 'staging']
+  }
+  println testOverrides
+
+Might result in something like:
+
+  service.nodePort=30162,loadbalancer.loadBalancerIp=10.142.15.200,loadbalancer.serviceNodePort=30162,loadbalancer.udpHealthNodePort=30163
