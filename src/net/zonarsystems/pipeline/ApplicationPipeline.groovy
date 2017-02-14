@@ -55,10 +55,8 @@ class ApplicationPipeline implements Serializable {
         if (overrides) {
           upgradeString += " --set ${overrides}"
         }
-        getSteps().echo """TODO:
-  helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}
-  ${upgradeString}
-  """
+        getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+        getSteps().sh upgradeString
       }
     }
   }
@@ -125,7 +123,12 @@ class ApplicationPipeline implements Serializable {
           commandString += " --set ${testOverrides}"
         }
 
-        getSteps().sh "${commandString}"
+        try {
+          getSteps().sh "${commandString}"
+        } catch (e) {
+          deleteHelmRelease(releaseName)
+          throw e
+        }
       }
     }
   }
@@ -138,9 +141,16 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           getSteps().echo "TODO: test ${chartsFolders[i]} deployed to ${namespace} namespace"
-          getSteps().sh "helm delete --purge ${releaseName}"
+          deleteHelmRelease(releaseName)
         }
       }
+    }
+  }
+
+  def deleteHelmRelease(releaseName) {
+    bailOnUninitialized()
+    getSteps().stage ('Delete helm release') {
+      getSteps().sh "helm delete --purge ${releaseName} || true"
     }
   }
 
