@@ -9,7 +9,7 @@ class GithubHelpers implements Serializable {
 	def orgName = 'samsung-cnct'
   	def githubURL = null
   	def username = null;
-  	def autString = null;
+  	def authString = null;
   	
 	GithubHelpers(repoName, orgName, username) {
 	    this.githubURL = "${this.githubURLBase}${orgName}/${repoName}"
