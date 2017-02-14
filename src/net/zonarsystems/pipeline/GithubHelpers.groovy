@@ -49,8 +49,7 @@ class GithubHelpers implements Serializable {
 	    return dirs;
 	}
 	
-	def loadYAMLFromGithub(filePath) {
-	    def url = "${githubURL}/${filePath}"
+	def loadYAMLFromGithub(url) {
 	    URLConnection conn = new URL(url).openConnection();
 	    conn.setRequestProperty("Authorization", "Basic ${this.authString}");
 	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(conn.getInputStream())));
