@@ -14,7 +14,7 @@ class GithubHelpers implements Serializable {
 	GithubHelpers(repoName, orgName, username) {
 	    this.githubURL = "${this.githubURLBase}${orgName}/${repoName}"
 	    def authToken = getCredentialsTokenForUser(username)
-	    this.authString = "${this.username}:${token}".getBytes().encodeBase64().toString();
+	    this.authString = "${this.username}:${authToken}".getBytes().encodeBase64().toString();
 	    this.username = username
 	 }
 
@@ -50,9 +50,8 @@ class GithubHelpers implements Serializable {
 	
 	def loadYAMLFromGithub(filePath) {
 	    def url = "${githubURL}/${filePath}"
-	    def authString = "${username}:${token}".getBytes().encodeBase64().toString();
 	    URLConnection conn = new URL(url).openConnection();
-	    conn.setRequestProperty("Authorization", "Basic ${authString}");
+	    conn.setRequestProperty("Authorization", "Basic ${this.authString}");
 	    def contents = new groovy.json.JsonSlurper().parse(new BufferedReader(new InputStreamReader(conn.getInputStream())));
 	    Yaml yml = new Yaml();
 	    Map values = (Map)yml.load(new URL(contents.download_url).getText());
