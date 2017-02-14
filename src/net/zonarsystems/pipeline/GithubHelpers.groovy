@@ -1,15 +1,16 @@
-
+package net.zonarsystems.pipeline
 
 import groovy.json.*
 import org.yaml.snakeyaml.Yaml
+
 
 class GithubHelpers implements Serializable {
 
 	def githubURLBase = 'https://api.github.com/'
 	def orgName = 'samsung-cnct'
-  	def githubURL = null
+  	def githubURL = null;
   	def username = null;
-  	def autString = null;
+  	def authString = null;
   	
 	GithubHelpers(repoName, orgName, username) {
 	    this.githubURL = "${this.githubURLBase}${orgName}/${repoName}"
