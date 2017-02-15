@@ -51,7 +51,7 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade --install ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)}"
+        def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
         if (overrides) {
           upgradeString += " --set ${overrides}"
         }
@@ -158,7 +158,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     def chartYaml = getScript().parseYaml {
-      yaml = getSteps().readTrusted("charts/${chartName}/Chart.yaml")
+      yaml = getSteps().readFile("charts/${chartName}/Chart.yaml")
     }
 
     return chartYaml.version
@@ -173,7 +173,7 @@ class ApplicationPipeline implements Serializable {
 
         // read in Chart.yaml
         def chartYaml = getScript().parseYaml {
-          yaml = getSteps().readTrusted("${chartsFolders[i]}/Chart.yaml")
+          yaml = getSteps().readFile("${chartsFolders[i]}/Chart.yaml")
         }
         
         def verComponents = []
@@ -206,7 +206,7 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         def reqYaml = getScript().parseYaml {
-          yaml = getSteps().readTrusted("${chartsFolders[i]}/values.yaml")
+          yaml = getSteps().readFile("${chartsFolders[i]}/values.yaml")
         }
 
         def dockerfileFolders = getScript().listFolders('./rootfs')
