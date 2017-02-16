@@ -45,45 +45,14 @@ class ApplicationPipeline implements Serializable {
   }
 
   def chartMake(command) {
-    makefileText = """
-  CHARTS := \$(shell find . -path '*/Chart.yaml' | tr '\\n' ' ' | sed -E 's:\\./|/Chart\\.yaml::g')
-  DEP_CHARTS := \$(shell find . -path '*/requirements.yaml' | tr '\\n' ' ' |  sed -E 's:\\./|/requirements\\.yaml::g')
+    def makefileText = getSteps().libraryResource 'net/zonarsystems/pipeline/chart.makefile'
 
-  .PHONY: clean all package makepath copy index sync acl dependency-update
-  all: package makepath copy index sync clean
-
-  dependency-update:
-    helm init -c
-    helm repo add charts \${getSettings().chartRepo}
-    \$(foreach chart,\$(DEP_CHARTS),(helm dependency update --debug \$(chart); echo \$?) && ) :
-
-  lint:
-    \$(foreach chart,\$(CHARTS),(helm lint \$(chart)) &&) :
-
-  package: dependency-update ; \$(foreach chart,\$(CHARTS),(helm package \$(chart) --save=false) &&) :
-
-  makepath:
-    @mkdir -p .charts
-
-  copy:
-    @mv *.tgz .charts/
-
-  index:
-    @gsutil -h Cache-Control:private -m cp ${getSettings().chartBucket}/index.yaml .charts/index.yaml
-    @helm repo index .charts --url ${getSettings().chartRepo} --merge .charts/index.yaml
-
-  sync:
-    @gsutil -h Cache-Control:private -m cp -r .charts/* ${getSettings().chartBucket}
-    
-  clean:
-    @rm -rf .charts"""
-
-    getSteps().writeFile(file: "charts/Makefile", text: makefileText.replaceAll('  ', '\t'))
+    getSteps().writeFile(file: "charts/Makefile", text: makefileText)
 
     try {
-      getSteps().sh("make ${command}")
+      getSteps().sh "make ${command} CHART_REPO=${getSettings().chartRepo} REPO_BUCKET=${getSettings().chartBucket}"
     } finally {
-      getSteps().sh('rm -f charts/Makefile')
+      getSteps().sh 'rm -f charts/Makefile'
     }
   }
 
