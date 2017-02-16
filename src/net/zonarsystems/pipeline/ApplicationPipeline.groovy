@@ -44,6 +44,49 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
+  def chartMake(command) {
+    makefileText = """
+  CHARTS := \$(shell find . -path '*/Chart.yaml' | tr '\\n' ' ' | sed -E 's:\\./|/Chart\\.yaml::g')
+  DEP_CHARTS := \$(shell find . -path '*/requirements.yaml' | tr '\\n' ' ' |  sed -E 's:\\./|/requirements\\.yaml::g')
+
+  .PHONY: clean all package makepath copy index sync acl dependency-update
+  all: package makepath copy index sync clean
+
+  dependency-update:
+    helm init -c
+    helm repo add charts \${getSettings().chartRepo}
+    \$(foreach chart,\$(DEP_CHARTS),(helm dependency update --debug \$(chart); echo \$?) && ) :
+
+  lint:
+    \$(foreach chart,\$(CHARTS),(helm lint \$(chart)) &&) :
+
+  package: dependency-update ; \$(foreach chart,\$(CHARTS),(helm package \$(chart) --save=false) &&) :
+
+  makepath:
+    @mkdir -p .charts
+
+  copy:
+    @mv *.tgz .charts/
+
+  index:
+    @gsutil -h Cache-Control:private -m cp ${getSettings().chartBucket}/index.yaml .charts/index.yaml
+    @helm repo index .charts --url ${getSettings().chartRepo} --merge .charts/index.yaml
+
+  sync:
+    @gsutil -h Cache-Control:private -m cp -r .charts/* ${getSettings().chartBucket}
+    
+  clean:
+    @rm -rf .charts"""
+
+    getSteps().writeFile(file: "charts/Makefile", text: makefileText.replaceAll('  ', '\t'))
+
+    try {
+      getSteps().sh("make ${command}")
+    } finally {
+      getSteps().sh('rm -f charts/Makefile')
+    }
+  }
+
   def upgradeHelmCharts(dockerImagesTag, overrides) {
     bailOnUninitialized()
 
@@ -96,7 +139,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Lint Helm chart(s)') {
-      getSteps().sh 'make lint -C charts'
+      chartMake('lint -C charts')
     }
   }
 
@@ -104,11 +147,9 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().sh """
-  gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/helm-service-account.json
-  make all -C charts
-  gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json
-  """
+      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/helm-service-account.json"
+      chartMake('all -C charts')
+      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
     }
   }
 
