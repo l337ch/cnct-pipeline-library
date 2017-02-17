@@ -45,7 +45,7 @@ class ApplicationPipeline implements Serializable {
   }
 
   def chartMake(command) {
-    def makefileText = getSteps().libraryResource 'net/zonarsystems/pipeline/chart.makefile'
+    def makefileText = getSteps().libraryResource 'chart.makefile'
 
     getSteps().writeFile(file: "charts/Makefile", text: makefileText)
 
