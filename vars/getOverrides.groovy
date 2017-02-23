@@ -15,7 +15,7 @@ def call(body) {
 def getOverrides(pipeline, chart, overrideType) {
   def res = null
   if (pipeline.overrides) {
-    def overrides = pipeline.overrides.get(overrideType)
+    def overrides = pipeline.overrides.get(chart).get(overrideType)
     if (overrides) {
       res = overrides.inject([]) { result, entry ->
         result << "${entry.key}=${entry.value.toString()}"
