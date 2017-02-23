@@ -8,11 +8,11 @@ def call(body) {
   body.delegate = config
   body()
   
-  return getOverrides(config.overrides.pipeline, config.overrides.type)
+  return getOverrides(config.overrides.pipeline, config.overrides.chart, config.overrides.type)
 }
 
 @NonCPS
-def getOverrides(pipeline, overrideType) {
+def getOverrides(pipeline, chart, overrideType) {
   def res = null
   if (pipeline.overrides) {
     def overrides = pipeline.overrides.get(overrideType)
