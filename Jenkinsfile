@@ -1,4 +1,5 @@
 #!/usr/bin/env groovy
+load src
 
 import net.zonarsystems.pipeline.ApplicationPipeline
 
