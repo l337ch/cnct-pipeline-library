@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
-this.class.classLoader.rootLoader.addURL(
-   new URL("file:///src"))
+
+def classLoader = BootStrap.class.classLoader
+classLoader.rootLoader.addURL(new URL("file:///src"))
 
 import java.util.zip.ZipOutputStream  
 import java.util.zip.ZipEntry  
@@ -24,7 +25,7 @@ zipFile.closeEntry()
 }  
 zipFile.close()
 this.class.classLoader.rootLoader.addURL(
-   new URL("file:///jarFileName"))  
+   new URL("file:///"+jarFileName))  
 
 import net.zonarsystems.pipeline.ApplicationPipeline
 
