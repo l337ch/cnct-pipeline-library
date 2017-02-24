@@ -6,7 +6,7 @@ node {
 	pipelineHelper = load "${workingDir}/src/net/zonarsystems/pipeline/PipelineHelpers.groovy"
 	applicationPipe = load "${workingDir}/src/net/zonarsystems/pipeline/applicationPipelineFile.groovy"
 
-	File pipelineHelperFile = new File("${workingDir}/src/net/zonarsystems/pipeline/PipelineHelper.groovy");
+	File pipelineHelperFile = new File("${workingDir}/src/net/zonarsystems/pipeline/PipelineHelpers.groovy");
 	File applicationPipelineFile = new File("${workingDir}/src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
 	
 	Class net.zonarsystems.pipeline.PipelineHelpers = new GroovyClassLoader(getClass().getClassLoader()).parseClass(pipelineHelperFile);
