@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-node {
+node 'test' {
 	def workingDir = pwd()
 	echo "${workingDir}"
 	File sourceFile = new File("${workingDir}/src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
