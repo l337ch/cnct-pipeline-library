@@ -3,8 +3,8 @@
 node {
 	def workingDir = "${pwd()}@script"
 	echo "${workingDir}@script"
-	load "${workingDir}/src/net/zonarsystems/pipeline/PipelineHelpers.groovy"
-	load "${workingDir}/src/net/zonarsystems/pipeline/applicationPipelineFile.groovy"
+	pipelineHelper = load "${workingDir}/src/net/zonarsystems/pipeline/PipelineHelpers.groovy"
+	applicationPipe = load "${workingDir}/src/net/zonarsystems/pipeline/applicationPipelineFile.groovy"
 /*
 	File applicationPipelineFile = new File("${workingDir}/src/net/zonarsystems/pipeline/applicationPipelineFile.groovy");
 	Class ApplicationPipelineClass = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
