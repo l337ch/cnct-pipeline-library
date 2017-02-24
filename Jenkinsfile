@@ -1,8 +1,8 @@
 #!/usr/bin/env groovy
 
-node 'test' {
-	def workingDir = pwd()
-	echo "${workingDir}"
+node('test') {
+	def workingDir = "${pwd()}@script"
+	echo "${workingDir}@script"
 	File sourceFile = new File("${workingDir}/src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
 	Class ApplicationPipelineClass = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
 	echo ApplicationPipelineClass.getName()
