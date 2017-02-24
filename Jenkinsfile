@@ -1,14 +1,14 @@
 #!/usr/bin/env groovy
 
 def libspec = '''
-@Library(pipeline@master)
+@Library(\'pipeline@master\')
 import net.zonarsystems.pipeline.ApplicationPipeline'''
 
 podTemplate(label: "env-pipelinelibrary", containers: [], volumes: []) {
   node ("env-pipelinelibrary") {
     if (env.CHANGE_ID) {
       libspec = """
-      @Library(pipeline@refs/remotes/origin/pr/${env.CHANGE_ID})
+      @Library('pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}')
       import net.zonarsystems.pipeline.ApplicationPipeline"""
     } 
   }
