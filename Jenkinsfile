@@ -1,17 +1,22 @@
 #!/usr/bin/env groovy
 
-def libspec = 'pipeline@master'
+def libspec = '''
+@Library(pipeline@master)
+import net.zonarsystems.pipeline.ApplicationPipeline'''
+
 podTemplate(label: "env-pipelinelibrary", containers: [], volumes: []) {
   node ("env-${application}") {
     if (env.CHANGE_ID) {
-      libspec = 'pipeline@refs/remotes/origin/pr/' + env.CHANGE_ID
+      libspec = """
+      @Library(pipeline@refs/remotes/origin/pr/${env.CHANGE_ID})
+      import net.zonarsystems.pipeline.ApplicationPipeline"""
     } 
   }
 }
 
-@Library(libspec)
-import net.zonarsystems.pipeline.ApplicationPipeline
-
-applicationPipeline = new ApplicationPipeline(steps, 'pipelinelibrary', this)
+libspec += '''
+applicationPipeline = new ApplicationPipeline(steps, \'pipelinelibrary\', this)
 applicationPipeline.init()
-applicationPipeline.pipelineRun()
+applicationPipeline.pipelineRun()'''
+
+evaluate(libspec)
