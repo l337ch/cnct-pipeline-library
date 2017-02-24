@@ -1,8 +1,8 @@
 #!/usr/bin/env groovy
 
 File sourceFile = new File("src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
-Class ApplicationPipeline = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
-ApplicationPipeline applicationPipeline = (GroovyObject) ApplicationPipeline.newInstance(steps, 'pipelinelibrary', this);
+Class ApplicationPipelineClass = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
+ApplicationPipeline applicationPipeline = (ApplicationPipeline) ApplicationPipelineClass.newInstance(steps, 'pipelinelibrary', this);
 
 //import net.zonarsystems.pipeline.ApplicationPipeline
 
