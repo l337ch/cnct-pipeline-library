@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
-File sourceFile = new File("./src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
+def workingdir = new File(".").getAbsoluteFile().getParent()
+File sourceFile = new File("${workingdir}/src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
 Class ApplicationPipelineClass = new GroovyClassLoader(getClass().getClassLoader()).parseClass(sourceFile);
 echo ApplicationPipelineClass.getName()
 
