@@ -24,7 +24,12 @@ def runGeneratedSource() {
 
 return this;
 '''
- 
-writeFile(file: 'Jenkinsfile.groovy', text: libspec)
-generatedPipeline = load 'Jenkinsfile.groovy'
+
+def generatedPipeline = null
+podTemplate(label: "env-pipelinelibrary", containers: [], volumes: []) {
+  node ("env-pipelinelibrary") { 
+    writeFile(file: 'Jenkinsfile.groovy', text: libspec)
+    generatedPipeline = load 'Jenkinsfile.groovy'
+  }
+}
 generatedPipeline.runGeneratedSource()
