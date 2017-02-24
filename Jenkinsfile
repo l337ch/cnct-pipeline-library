@@ -9,7 +9,7 @@ podTemplate(label: "env-pipelinelibrary", containers: [], volumes: []) {
   }
 }
 
-@Library(value=libspec)
+@Library(value=[libspec])
 import net.zonarsystems.pipeline.ApplicationPipeline
 
 applicationPipeline = new ApplicationPipeline(steps, 'pipelinelibrary', this)
