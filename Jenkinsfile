@@ -15,8 +15,16 @@ podTemplate(label: "env-pipelinelibrary", containers: [], volumes: []) {
 }
 
 libspec += '''
-applicationPipeline = new ApplicationPipeline(steps, \'pipelinelibrary\', this)
-applicationPipeline.init()
-applicationPipeline.pipelineRun()'''
 
-evaluate(libspec)
+def runGeneratedSource() {
+  applicationPipeline = new ApplicationPipeline(steps, 'pipelinelibrary', this)
+  applicationPipeline.init()
+  applicationPipeline.pipelineRun()
+}
+
+return this;
+'''
+ 
+writeFile(file: 'Jenkinsfile.groovy', text: libspec)
+generatedPipeline = load 'Jenkinsfile.groovy'
+generatedPipeline.runGeneratedSource()
