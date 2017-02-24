@@ -2,7 +2,6 @@
 this.class.classLoader.rootLoader.addURL(
    new URL("file:///src"))
 
-/*
 import java.util.zip.ZipOutputStream  
 import java.util.zip.ZipEntry  
 import java.nio.channels.FileChannel  
@@ -23,9 +22,10 @@ zipFile.write(buffer, 0, l)
 }  
 zipFile.closeEntry()  
 }  
-zipFile.close()  
+zipFile.close()
+this.class.classLoader.rootLoader.addURL(
+   new URL("file:///jarFileName"))  
 
-load */
 import net.zonarsystems.pipeline.ApplicationPipeline
 
 applicationPipeline = new ApplicationPipeline(steps, 'pipelinelibrary', this)
