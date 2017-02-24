@@ -9,8 +9,8 @@ node {
 	File pipelineHelperFile = new File("${workingDir}/src/net/zonarsystems/pipeline/PipelineHelper.groovy");
 	File applicationPipelineFile = new File("${workingDir}/src/net/zonarsystems/pipeline/ApplicationPipeline.groovy");
 	
-	Class PipelineHelper = new GroovyClassLoader(getClass().getClassLoader()).parseClass(pipelineHelperFile);
-	Class ApplicationPipeline = new GroovyClassLoader(getClass().getClassLoader()).parseClass(applicationPipelineFile);
+	Class net.zonarsystems.pipeline.PipelineHelpers = new GroovyClassLoader(getClass().getClassLoader()).parseClass(pipelineHelperFile);
+	Class net.zonarsystems.pipeline.ApplicationPipeline = new GroovyClassLoader(getClass().getClassLoader()).parseClass(applicationPipelineFile);
 
 	
 	//net.zonarsystems.pipeline.ApplicationPipeline applicationPipeline = (net.zonarsystems.pipeline.ApplicationPipeline) ApplicationPipelineClass.newInstance(steps, 'pipelinelibrary', this);
