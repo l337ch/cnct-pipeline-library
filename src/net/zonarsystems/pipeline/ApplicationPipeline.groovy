@@ -191,8 +191,8 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            if (getSteps().fileExists("./test/${splits[chartPathComps.size()-1]}/smoke")) {
-              getSteps().sh("./test/${chartPathComps[chartPathComps.size()-1]}/smoke/")
+            if (getSteps().fileExists("./test/${chartPathComps[chartPathComps.size()-1]}/smoke")) {
+              getSteps().sh("ginkgo ./test/${chartPathComps[chartPathComps.size()-1]}/smoke/")
               getSteps().junit("test/${chartPathComps[chartPathComps.size()-1]}/smoke/junit_*.xml")
             }
           } finally {
