@@ -67,6 +67,8 @@ class ApplicationPipeline implements Serializable {
         if (overrides) {
           upgradeString += " --set ${overrides}"
         }
+        // update dependencies
+        getSteps().sh 'helm repo update'
         getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
         getSteps().sh upgradeString
       }
@@ -122,36 +124,80 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def deployHelmChartsFromPath(namespace, releaseName, testOverrides) {
+  def deployHelmChartsFromPath(path, namespace, releaseName, testOverrides) {
     bailOnUninitialized()
 
     getSteps().stage ("Deploy Helm chart(s) to ${namespace} namespace") {
+      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
+      if (testOverrides) {
+        commandString += " --set ${testOverrides}"
+      }
+
+      try {
+        getSteps().sh "${commandString}"
+      } catch (e) {
+        deleteHelmRelease(releaseName)
+        throw e
+      }
+    }
+  }
+
+  def e2eTestHelmCharts(namespace, releaseName) {
+    bailOnUninitialized()
+
+    getSteps().stage ('Helm chart(s) end to end testing') {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
-        def commandString = "helm install ${chartsFolders[i]} --name ${releaseName} --namespace ${namespace}" 
-        if (testOverrides) {
-          commandString += " --set ${testOverrides}"
-        }
+        if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def testOverrides = getScript().getOverrides {
+            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+          }
 
-        try {
-          getSteps().sh "${commandString}"
-        } catch (e) {
-          deleteHelmRelease(releaseName)
-          throw e
+          deployHelmChartsFromPath(
+            chartsFolders[i],
+            'staging',  
+            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            testOverrides
+          )
+
+          try {
+            getSteps().echo('TODO: run 2e2 tests')
+          } finally {
+            deleteHelmRelease(releaseName)
+          }
         }
       }
     }
   }
 
-  def testHelmCharts(namespace, releaseName) {
+  def smokeTestHelmCharts(namespace, releaseName) {
     bailOnUninitialized()
 
-    getSteps().stage ('Test Helm chart(s)') {
+    getSteps().stage ('Helm chart(s) smoke testing') {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          getSteps().echo "TODO: test ${chartsFolders[i]} deployed to ${namespace} namespace"
-          deleteHelmRelease(releaseName)
+          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def testOverrides = getScript().getOverrides {
+            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+          }
+
+          deployHelmChartsFromPath(
+            chartsFolders[i],
+            'staging',  
+            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            testOverrides
+          )
+
+          try {
+            if (getSteps().fileExists("./test/${chartPathComps[chartPathComps.size()-1]}/smoke")) {
+              getSteps().sh("ginkgo ./test/${chartPathComps[chartPathComps.size()-1]}/smoke/")
+              getSteps().junit("test/${chartPathComps[chartPathComps.size()-1]}/smoke/junit_*.xml")
+            }
+          } finally {
+            deleteHelmRelease(releaseName)
+          }
         }
       }
     }
@@ -288,6 +334,9 @@ class ApplicationPipeline implements Serializable {
   def pipelineRun() {
     bailOnUninitialized();
 
+    // no concurrent master or PR builds, as charts use cluster-unique resources.
+    getSteps().properties([getSteps().disableConcurrentBuilds()])
+
     getSteps().podTemplate(label: "CI-${application}", containers: [
       getSteps().containerTemplate(name: 'gke', image: 'gcr.io/sds-readiness/jenkins-gke:latest', ttyEnabled: true, command: 'cat', alwaysPullImage: true),
     ],
@@ -325,28 +374,26 @@ class ApplicationPipeline implements Serializable {
             // if this is a Pull Request change
             if (getEnvironment().CHANGE_ID) {
 
-              def testOverrides = getScript().getOverrides {
-                overrides = [pipeline: getPipeline(), type: 'staging']
-              }
-
               // lint, and deploy charts to staging namespace 
               // with injected docker tag values
               // and injected test values 
               // without uploading to helm repo
               lintHelmCharts()
-              deployHelmChartsFromPath(
-                'staging',  
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
-                testOverrides
-              )
 
               // test the deployed charts, destroy the deployments
-              testHelmCharts(
+              smokeTestHelmCharts(
                 'staging', 
                 "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
               )
+
+              if (getPipeline().deploy) {
+                e2eTestHelmCharts(
+                  'staging', 
+                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                )
+              }
             } else {
-              // commit changes to Chart.yaml and vlaues.yaml to github
+              // commit changes to Chart.yaml and values.yaml to github
               pushChangesToGithub()
 
               // package and upload charts to helm repo
