@@ -56,22 +56,18 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(dockerImagesTag, overrides) {
+  def upgradeHelmCharts(chartName, dockerImagesTag, overrides) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
-      def chartsFolders = getScript().listFolders('./charts')
-      for (def i = 0; i < chartsFolders.size(); i++) {
-        def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
-        if (overrides) {
-          upgradeString += " --set ${overrides}"
-        }
-        // update dependencies
-        getSteps().sh 'helm repo update'
-        getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
-        getSteps().sh upgradeString
+      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
+      if (overrides) {
+        upgradeString += " --set ${overrides}"
       }
+      // update dependencies
+      getSteps().sh 'helm repo update'
+      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+      getSteps().sh upgradeString
     }
   }
 
@@ -402,10 +398,25 @@ class ApplicationPipeline implements Serializable {
               // if pipeline component is marked deployable,
               // deploy it.
               if (getPipeline().deploy) {
-                def prodOverrides = getScript().getOverrides {
-                  overrides = [pipeline: getPipeline(), type: 'prod']
-                }
-                upgradeHelmCharts(getScript().getGitSha(), prodOverrides)
+                def chartsFolders = getScript().listFolders('./charts')
+                for (def i = 0; i < chartsFolders.size(); i++) {
+                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+                    def chartPathComps = "${chartsFolders[i]}".split('/')
+                    def prodOverrides = getScript().getOverrides {
+                      overrides = [
+                        pipeline: getPipeline(), 
+                        chart: chartPathComps[chartPathComps.size()-1], 
+                        type: 'prod'
+                      ]
+                    }
+
+                    upgradeHelmCharts(
+                      chartPathComps[chartPathComps.size()-1], 
+                      getScript().getGitSha(), 
+                      prodOverrides
+                    )
+                  }
+                }                
               }
             }
           }
