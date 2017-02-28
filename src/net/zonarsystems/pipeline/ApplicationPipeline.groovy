@@ -95,6 +95,11 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
+
+          if (getSteps().fileExists("${dockerfileFolders[i]}/Makefile")) {
+            getSteps().sh "make -C ${dockerfileFolders[i]}"
+          }
+          
           getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
           getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
         }
@@ -158,7 +163,10 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            getSteps().echo('TODO: run 2e2 tests')
+            if (getSteps().fileExists("./test/e2e")) {
+              getSteps().sh("ginkgo ./test/e2e/")
+              getSteps().junit("test/e2e/junit_*.xml")
+            }
           } finally {
             deleteHelmRelease(releaseName)
           }
