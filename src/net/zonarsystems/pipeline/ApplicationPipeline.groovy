@@ -164,7 +164,7 @@ class ApplicationPipeline implements Serializable {
 
           try {
             if (getSteps().fileExists("./test/e2e")) {
-              getSteps().sh("ginkgo ./test/e2e/")
+              getSteps().sh("ginkgo ./test/e2e/ -- --service=http://${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}.staging.svc.cluster.local")
               getSteps().junit("test/e2e/junit_*.xml")
             }
           } finally {
