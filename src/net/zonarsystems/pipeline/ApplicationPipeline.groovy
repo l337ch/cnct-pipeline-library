@@ -119,7 +119,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/helm-service-account.json"
+      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
       chartMake('all -C charts')
       getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
     }
