@@ -1,5 +1,7 @@
 CHARTS := $(shell find . -path '*/Chart.yaml' | tr '\n' ' ' | sed -E 's:\./|/Chart\.yaml::g')
 DEP_CHARTS := $(shell find . -path '*/requirements.yaml' | tr '\n' ' ' |  sed -E 's:\./|/requirements\.yaml::g')
+INDEX_INFO := $(shell gsutil -q stat $(REPO_BUCKET)/index.yaml; echo $$?)
+
 CHART_REPO = "change-me"
 REPO_BUCKET = "change-me"
 
@@ -23,8 +25,12 @@ copy:
 	@mv *.tgz .pipeline-charts/
 
 index:
+ifeq ($(INDEX_INFO),0)
 	@gsutil -h Cache-Control:private -m cp $(REPO_BUCKET)/index.yaml .pipeline-charts/index.yaml
 	@helm repo index .pipeline-charts --url $(CHART_REPO) --merge .pipeline-charts/index.yaml
+else
+	@helm repo index .pipeline-charts --url $(CHART_REPO)
+endif	
 
 sync:
 	@gsutil -h Cache-Control:private -m cp -r .pipeline-charts/* $(REPO_BUCKET)
