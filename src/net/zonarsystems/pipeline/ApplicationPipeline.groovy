@@ -64,9 +64,10 @@ class ApplicationPipeline implements Serializable {
       if (overrides) {
         upgradeString += " --set ${overrides}"
       }
+      // add repo
+      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       // update dependencies
       getSteps().sh 'helm repo update'
-      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       getSteps().retry(getSettings().maxRetry) {
         getSteps().sh upgradeString
       }
