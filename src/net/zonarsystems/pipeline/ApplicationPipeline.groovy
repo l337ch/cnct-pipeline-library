@@ -67,7 +67,9 @@ class ApplicationPipeline implements Serializable {
       // update dependencies
       getSteps().sh 'helm repo update'
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
-      getSteps().sh upgradeString
+      getSteps().retry(getSettings().maxRetry) {
+        getSteps().sh upgradeString
+      }
     }
   }
 
@@ -119,9 +121,11 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
-      chartMake('all -C charts')
-      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+      getSteps().retry(getSettings().maxRetry) {
+        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
+        chartMake('all -C charts')
+        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+      }
     }
   }
 
