@@ -56,20 +56,19 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(dockerImagesTag, overrides) {
+  def upgradeHelmCharts(chartName, dockerImagesTag, overrides) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
-      def chartsFolders = getScript().listFolders('./charts')
-      for (def i = 0; i < chartsFolders.size(); i++) {
-        def chartName = chartsFolders[i].split('/').last()
-        def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
-        if (overrides) {
-          upgradeString += " --set ${overrides}"
-        }
-        // update dependencies
-        getSteps().sh 'helm repo update'
-        getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
+      if (overrides) {
+        upgradeString += " --set ${overrides}"
+      }
+      // add repo
+      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+      // update dependencies
+      getSteps().sh 'helm repo update'
+      getSteps().retry(getSettings().maxRetry) {
         getSteps().sh upgradeString
       }
     }
@@ -99,6 +98,11 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
+
+          if (getSteps().fileExists("${dockerfileFolders[i]}/Makefile")) {
+            getSteps().sh "make -C ${dockerfileFolders[i]}"
+          }
+          
           getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
           getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
         }
@@ -118,9 +122,11 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/helm-service-account.json"
-      chartMake('all -C charts')
-      getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+      getSteps().retry(getSettings().maxRetry) {
+        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
+        chartMake('all -C charts')
+        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+      }
     }
   }
 
@@ -162,7 +168,10 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            getSteps().echo('TODO: run 2e2 tests')
+            if (getSteps().fileExists("./test/e2e")) {
+              getSteps().sh("ginkgo ./test/e2e/ -- --service=http://${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}.staging.svc.cluster.local")
+              getSteps().junit("test/e2e/junit_*.xml")
+            }
           } finally {
             deleteHelmRelease(releaseName)
           }
@@ -191,9 +200,9 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            if (getSteps().fileExists("./test/${chartPathComps[chartPathComps.size()-1]}/smoke")) {
-              getSteps().sh("ginkgo ./test/${chartPathComps[chartPathComps.size()-1]}/smoke/")
-              getSteps().junit("test/${chartPathComps[chartPathComps.size()-1]}/smoke/junit_*.xml")
+            if (getSteps().fileExists("./test/smoke/${chartPathComps[chartPathComps.size()-1]}")) {
+              getSteps().sh("ginkgo ./test/smoke/${chartPathComps[chartPathComps.size()-1]}/")
+              getSteps().junit("test/smoke/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
             }
           } finally {
             deleteHelmRelease(releaseName)
@@ -402,10 +411,25 @@ class ApplicationPipeline implements Serializable {
               // if pipeline component is marked deployable,
               // deploy it.
               if (getPipeline().deploy) {
-                def prodOverrides = getScript().getOverrides {
-                  overrides = [pipeline: getPipeline(), type: 'prod']
-                }
-                upgradeHelmCharts(getScript().getGitSha(), prodOverrides)
+                def chartsFolders = getScript().listFolders('./charts')
+                for (def i = 0; i < chartsFolders.size(); i++) {
+                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+                    def chartPathComps = "${chartsFolders[i]}".split('/')
+                    def prodOverrides = getScript().getOverrides {
+                      overrides = [
+                        pipeline: getPipeline(), 
+                        chart: chartPathComps[chartPathComps.size()-1], 
+                        type: 'prod'
+                      ]
+                    }
+
+                    upgradeHelmCharts(
+                      chartPathComps[chartPathComps.size()-1], 
+                      getScript().getGitSha(), 
+                      prodOverrides
+                    )
+                  }
+                }                
               }
             }
           }
