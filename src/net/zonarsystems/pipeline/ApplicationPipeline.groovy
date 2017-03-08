@@ -179,7 +179,8 @@ class ApplicationPipeline implements Serializable {
       }
     }
   }
-
+  
+ 
   def smokeTestHelmCharts(namespace, releaseName) {
     bailOnUninitialized()
 
@@ -200,9 +201,10 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            if (getSteps().fileExists("./test/smoke/${chartPathComps[chartPathComps.size()-1]}")) {
-              getSteps().sh("ginkgo ./test/smoke/${chartPathComps[chartPathComps.size()-1]}/")
-              getSteps().junit("test/smoke/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
+            if (getSteps().fileExists("./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}")) {
+			  env.GOPATH="./test/smoke"
+			  getSteps().sh("ginkgo ./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/ --  -chartName=${releaseName} -namespace=${namespace}")
+              getSteps().junit("test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
             }
           } finally {
             deleteHelmRelease(releaseName)
