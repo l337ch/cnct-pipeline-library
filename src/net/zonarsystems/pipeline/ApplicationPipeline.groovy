@@ -192,7 +192,9 @@ class ApplicationPipeline implements Serializable {
           def testOverrides = getScript().getOverrides {
             overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
           }
-
+		  def chartYaml = getScript().parseYaml {
+			  yaml = getSteps().readFile("${chartsFolders[i]}}/Chart.yaml")
+			}
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
@@ -201,10 +203,11 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            //if (getSteps().fileExists("./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}")) {
-			//  getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/ --  -chartName=${releaseName} -namespace=${namespace}")
-            //  getSteps().junit("test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
-            //}
+			def chartName="${chartYaml.name}-${chartYaml.version.replaceAll('+','_')}"
+            if (getSteps().fileExists("./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}")) {
+			  getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/ --  -chartName=${chartName} -namespace=${namespace}")
+              getSteps().junit("test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
+            }
           } finally {
             deleteHelmRelease(releaseName)
           }
