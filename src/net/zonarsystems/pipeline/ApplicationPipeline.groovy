@@ -202,9 +202,9 @@ class ApplicationPipeline implements Serializable {
 
           try {
             def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('+','_')}"
-            if (getSteps().fileExists("./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}")) {
-              getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
-              getSteps().junit("test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
+            if (getSteps().fileExists("./test/smoke/src/${chartName}")) {
+              getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
+              getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
             }
           } finally {
             deleteHelmRelease(releaseName)
