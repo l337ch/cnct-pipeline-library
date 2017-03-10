@@ -222,14 +222,12 @@ class ApplicationPipeline implements Serializable {
   }
 
   def getHelmChartName(directory) {
-	  bailOnUninitialized()
-  
-	  def chartYaml = getScript().parseYaml {
-		yaml = getSteps().readFile("${directory}/Chart.yaml")
-	  }
-  
-	  return chartYaml.name
-	}
+      bailOnUninitialized()
+      def chartYaml = getScript().parseYaml {
+         yaml = getSteps().readFile("${directory}/Chart.yaml")
+      }
+      return chartYaml.name
+  }
   
   def getHelmChartVersion(directory) {
     bailOnUninitialized()
