@@ -56,11 +56,12 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(chartName, dockerImagesTag, overrides) {
+  def upgradeHelmCharts(directory, dockerImagesTag, overrides) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
-      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
+      def chartName = getHelmChartName(directory)
+      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(directory)} --install --namespace prod"
       if (overrides) {
         upgradeString += " --set ${overrides}"
       }
@@ -155,9 +156,9 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def chartName = getHelmChartName(${chartsFolders[i]})
           def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
           }
 
           deployHelmChartsFromPath(
@@ -188,11 +189,10 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def chartName = getHelmChartName(chartsFolders[i])
           def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
           }
-
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
@@ -201,10 +201,11 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            //if (getSteps().fileExists("./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}")) {
-			//  getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/ --  -chartName=${releaseName} -namespace=${namespace}")
-            //  getSteps().junit("test/smoke/src/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
-            //}
+            def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('+','_')}"
+            if (getSteps().fileExists("./test/smoke/src/${chartName}")) {
+              getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
+              getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
+            }
           } finally {
             deleteHelmRelease(releaseName)
           }
@@ -220,11 +221,19 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def getHelmChartVersion(chartName) {
+  def getHelmChartName(directory) {
+      bailOnUninitialized()
+      def chartYaml = getScript().parseYaml {
+         yaml = getSteps().readFile("${directory}/Chart.yaml")
+      }
+      return chartYaml.name
+  }
+  
+  def getHelmChartVersion(directory) {
     bailOnUninitialized()
 
     def chartYaml = getScript().parseYaml {
-      yaml = getSteps().readFile("charts/${chartName}/Chart.yaml")
+      yaml = getSteps().readFile("charts/${directory}/Chart.yaml")
     }
 
     return chartYaml.version
@@ -415,17 +424,17 @@ class ApplicationPipeline implements Serializable {
                 def chartsFolders = getScript().listFolders('./charts')
                 for (def i = 0; i < chartsFolders.size(); i++) {
                   if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-                    def chartPathComps = "${chartsFolders[i]}".split('/')
+                    def chartName = getHelmChartName(${chartsFolders[i]})
                     def prodOverrides = getScript().getOverrides {
                       overrides = [
                         pipeline: getPipeline(), 
-                        chart: chartPathComps[chartPathComps.size()-1], 
+                        chart: chartName, 
                         type: 'prod'
                       ]
                     }
-
+                    
                     upgradeHelmCharts(
-                      chartPathComps[chartPathComps.size()-1], 
+                      chartName, 
                       getScript().getGitSha(), 
                       prodOverrides
                     )
