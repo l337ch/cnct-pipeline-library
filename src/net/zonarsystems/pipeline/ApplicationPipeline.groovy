@@ -173,7 +173,7 @@ class ApplicationPipeline implements Serializable {
           try {
             if (getSteps().fileExists('./test/e2e')) {
               // transform test dictionary into '--key=value' format
-              e2eVars = getScript().getE2eVars {
+              def e2eVars = getScript().getE2eVars {
                 e2e = getE2e()
               }
 
