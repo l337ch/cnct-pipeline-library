@@ -16,16 +16,18 @@ class ApplicationPipeline implements Serializable {
   def getPipeline(app) { bailOnUninitialized(); pipeline[app] }
 
   def helpers
+  def e2e
   
   def ready = false
   def uniqueJenkinsId = ''
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script) {
+  ApplicationPipeline(steps, application, script, e2e = [:] ) {
     this.steps = steps
     this.application = application
     this.script = script
+    this.e2e = e2e
   }
 
   def pipelineCheckout() {
@@ -164,14 +166,19 @@ class ApplicationPipeline implements Serializable {
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            releaseName,
             testOverrides
           )
 
           try {
-            if (getSteps().fileExists("./test/e2e")) {
-              getSteps().sh("ginkgo ./test/e2e/ -- --service=http://${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}.staging.svc.cluster.local")
-              getSteps().junit("test/e2e/junit_*.xml")
+            if (getSteps().fileExists('./test/e2e')) {
+              // transform test dictionary into '--key=value' format
+              e2eVars = getScript().getE2eVars {
+                e2e = getE2e()
+              }
+
+              getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
+              getSteps().junit('test/e2e/junit_*.xml')
             }
           } finally {
             deleteHelmRelease(releaseName)
@@ -408,7 +415,7 @@ class ApplicationPipeline implements Serializable {
               if (getPipeline().deploy) {
                 e2eTestHelmCharts(
                   'staging', 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                  getPipeline().helm
                 )
               }
             } else {
