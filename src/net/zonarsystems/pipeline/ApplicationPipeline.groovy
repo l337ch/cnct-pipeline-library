@@ -424,17 +424,16 @@ class ApplicationPipeline implements Serializable {
                 def chartsFolders = getScript().listFolders('./charts')
                 for (def i = 0; i < chartsFolders.size(); i++) {
                   if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-                    def chartName = getHelmChartName("${chartsFolders[i]}")
                     def prodOverrides = getScript().getOverrides {
                       overrides = [
                         pipeline: getPipeline(), 
-                        chart: chartName, 
+                        chart: getHelmChartName("${chartsFolders[i]}"), 
                         type: 'prod'
                       ]
                     }
                     
                     upgradeHelmCharts(
-                      chartName, 
+                      chartsFolders[i], 
                       getScript().getGitSha(), 
                       prodOverrides
                     )
