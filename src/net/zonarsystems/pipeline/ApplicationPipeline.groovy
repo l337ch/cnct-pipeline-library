@@ -203,7 +203,7 @@ class ApplicationPipeline implements Serializable {
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            releaseName,
             testOverrides
           )
 
@@ -415,7 +415,7 @@ class ApplicationPipeline implements Serializable {
               if (getPipeline().deploy) {
                 e2eTestHelmCharts(
                   'staging', 
-                  getPipeline().helm
+                  "${getPipeline().helm}-e2e"
                 )
               }
             } else {
