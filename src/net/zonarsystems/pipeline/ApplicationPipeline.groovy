@@ -164,14 +164,19 @@ class ApplicationPipeline implements Serializable {
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            releaseName,
             testOverrides
           )
 
           try {
-            if (getSteps().fileExists("./test/e2e")) {
-              getSteps().sh("ginkgo ./test/e2e/ -- --service=http://${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}.staging.svc.cluster.local")
-              getSteps().junit("test/e2e/junit_*.xml")
+            if (getSteps().fileExists('./test/e2e')) {
+              // transform test dictionary into '--key=value' format
+              e2eVars = getScript().getE2eVars {
+                pipeline = getPipeline()
+              }
+
+              getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
+              getSteps().junit('test/e2e/junit_*.xml')
             }
           } finally {
             deleteHelmRelease(releaseName)
@@ -408,7 +413,7 @@ class ApplicationPipeline implements Serializable {
               if (getPipeline().deploy) {
                 e2eTestHelmCharts(
                   'staging', 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                  "${getPipeline().helm}-e2e"
                 )
               }
             } else {
