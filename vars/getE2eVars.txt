@@ -1,43 +1,16 @@
 Returns a ginkgo-compatible flag list for passing values to test suites
 
-For example, given pipeline definition:
-  pipelines = [
-    gprsd: [
-      desc: 'Pipeline for continous delivery of gprsd app',
-      pipeline: 'gprsd-pipeline', 
-      repo: 'zonar-gprsd',
-      slack: '#ping-zonar',
-      helm: 'zonar-gprsd',
-      upstream: ['loadbalancer'],
-      e2e: [
-        service: 'http://zonar-gprsd-e2e.staging.svc.cluster.local',
-        dostuff: true,
-        port: 12345
-      ],
-      overrides: [
-        gprsd: [
-          staging: [
-            'service.nodePort': 30162,
-            'loadbalancer.loadBalancerIp': '10.142.15.200',
-            'loadbalancer.serviceNodePort': 30162,
-            'loadbalancer.udpHealthNodePort': 30163       
-          ],
-          prod: [
-            'service.nodePort': 30062,
-            'loadbalancer.loadBalancerIp': '10.142.15.200',
-            'loadbalancer.serviceNodePort': 30062,
-            'loadbalancer.udpHealthNodePort': 30063       
-          ]
-        ]
-      ],
-      deploy: true
-    ]
+For example, given a map
+  dict = [
+    service: 'http://zonar-gprsd-e2e.staging.svc.cluster.local',
+    dostuff: true,
+    port: 12345
   ]
 
 And a call to getE2eVars:
 
   e2eVars = getE2eVars {
-    pipeline = pipelines.gprsd
+    e2e = dict
   }
   println e2eVars
 

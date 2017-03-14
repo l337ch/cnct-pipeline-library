@@ -16,16 +16,18 @@ class ApplicationPipeline implements Serializable {
   def getPipeline(app) { bailOnUninitialized(); pipeline[app] }
 
   def helpers
+  def e2e
   
   def ready = false
   def uniqueJenkinsId = ''
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script) {
+  ApplicationPipeline(steps, application, script, e2e = [:] ) {
     this.steps = steps
     this.application = application
     this.script = script
+    this.e2e = e2e
   }
 
   def pipelineCheckout() {
@@ -172,7 +174,7 @@ class ApplicationPipeline implements Serializable {
             if (getSteps().fileExists('./test/e2e')) {
               // transform test dictionary into '--key=value' format
               e2eVars = getScript().getE2eVars {
-                pipeline = getPipeline()
+                e2e = getE2e()
               }
 
               getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
@@ -413,7 +415,7 @@ class ApplicationPipeline implements Serializable {
               if (getPipeline().deploy) {
                 e2eTestHelmCharts(
                   'staging', 
-                  "${getPipeline().helm}-e2e"
+                  getPipeline().helm
                 )
               }
             } else {
