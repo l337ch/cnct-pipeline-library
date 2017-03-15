@@ -3,12 +3,12 @@ import com.cloudbees.groovy.cps.NonCPS
 
 def call(body) {
   // evaluate the body block, and collect configuration into the object
-  def e2e = [:]
+  def config = [:]
   body.resolveStrategy = Closure.DELEGATE_FIRST
   body.delegate = e2e
   body()
   
-  return getE2eVars(e2e)
+  return getE2eVars(config.e2e)
 }
 
 @NonCPS
