@@ -406,17 +406,21 @@ class ApplicationPipeline implements Serializable {
               // without uploading to helm repo
               lintHelmCharts()
 
-              // test the deployed charts, destroy the deployments
-              smokeTestHelmCharts(
-                'staging', 
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
-              )
-
-              if (getPipeline().deploy) {
-                e2eTestHelmCharts(
+              // lock on helm release name - this way we can avoid 
+              // port name collisions between concurrently running PR jobs
+              lock(getPipeline().helm) {
+                // test the deployed charts, destroy the deployments
+                smokeTestHelmCharts(
                   'staging', 
-                  "${getPipeline().helm}-e2e"
+                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
                 )
+
+                if (getPipeline().deploy) {
+                  e2eTestHelmCharts(
+                    'staging', 
+                    "${getPipeline().helm}-e2e"
+                  )
+                }
               }
             } else {
               // commit changes to Chart.yaml and values.yaml to github
