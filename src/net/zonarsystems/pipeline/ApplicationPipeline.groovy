@@ -408,7 +408,7 @@ class ApplicationPipeline implements Serializable {
 
               // lock on helm release name - this way we can avoid 
               // port name collisions between concurrently running PR jobs
-              lock(getPipeline().helm) {
+              getSteps().lock(getPipeline().helm) {
                 // test the deployed charts, destroy the deployments
                 smokeTestHelmCharts(
                   'staging', 
