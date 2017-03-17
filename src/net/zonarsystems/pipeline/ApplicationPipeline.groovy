@@ -137,6 +137,10 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ("Deploy Helm chart(s) to ${namespace} namespace") {
+      // add repo (for requirements yaml charts) and pull dependencies
+      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+      getSteps().sh "helm dependency update ${path}"
+
       def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
       if (testOverrides) {
         commandString += " --set ${testOverrides}"
