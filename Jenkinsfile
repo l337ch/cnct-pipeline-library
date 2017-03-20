@@ -3,9 +3,8 @@
 node ("CI-library") {
 	print "testing library PR ${env.CHANGE_ID}"
 	def lib = library("pipeline@refs/remotes/origin/pr/100")
-	import lib.net.zonarsystems.pipeline.ApplicationPipeline
 	
-	applicationPipeline = new ApplicationPipeline(
+	applicationPipeline = new lib.net.zonarsystems.pipeline.ApplicationPipeline(
 	  steps, 
 	  'busybox', 
 	  this
