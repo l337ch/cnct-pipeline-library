@@ -1,29 +1,24 @@
 #!/usr/bin/env groovy
 
-def runTest(applicationPipeline) {
-	applicationPipeline.init()
-	applicationPipeline.pipelineRun()
+def getLibrary() {
+	if (env.CHANGE_ID) {
+		print "testing library PR ${env.CHANGE_ID}"
+		return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
+	} else {
+		print "testing library on master"
+		return  library("pipeline")
+	}
 }
 
 node {
- 	if (env.CHANGE_ID) {
-		print "testing library PR ${env.CHANGE_ID}"
-		def lib = library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
 		
-		applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
-		  steps, 
-		  'pipelinelibrary', 
-		  this
-		)
-		runTest(applicationPipeline)
-	} else {
-		print "testing library on master"
-		def lib = library("pipeline")
-		applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new.ApplicationPipeline(
-		  steps, 
-		  'pipelinelibrary', 
-		  this
-		)
-		runTest(applicationPipeline)
-	}
+	def lib = getLibrary()
+	
+	applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
+	  steps, 
+	  'pipelinelibrary', 
+	  this
+	)
+	applicationPipeline.init()
+	applicationPipeline.pipelineRun()
 }
