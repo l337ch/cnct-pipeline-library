@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
-print "testing library PR ${env.CHANGE_ID}"
-@Library('pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}')
+print "testing library PR ${env.JOB_NAME}"
+@Library('pipeline@refs/remotes/origin/pr/${env.JOB_NAME}')
 import net.zonarsystems.pipeline.ApplicationPipeline
 
 applicationPipeline = new ApplicationPipeline(
