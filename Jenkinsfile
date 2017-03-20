@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-print "testing library PR ${env.GIT_BRANCH}"
+print "testing library PR ${env.ghprbPullId}"
 @Library("pipeline@refs/remotes/origin/pr/100")
 import net.zonarsystems.pipeline.ApplicationPipeline
 
