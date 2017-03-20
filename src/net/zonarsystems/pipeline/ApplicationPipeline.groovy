@@ -16,16 +16,18 @@ class ApplicationPipeline implements Serializable {
   def getPipeline(app) { bailOnUninitialized(); pipeline[app] }
 
   def helpers
+  def e2e
   
   def ready = false
   def uniqueJenkinsId = ''
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script) {
+  ApplicationPipeline(steps, application, script, e2e = [:] ) {
     this.steps = steps
     this.application = application
     this.script = script
+    this.e2e = e2e
   }
 
   def pipelineCheckout() {
@@ -56,11 +58,12 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(chartName, dockerImagesTag, overrides) {
+  def upgradeHelmCharts(directory, dockerImagesTag, overrides) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
-      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(chartName)} --install --namespace prod"
+      def chartName = getHelmChartName(directory)
+      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(directory)} --install --namespace prod"
       if (overrides) {
         upgradeString += " --set ${overrides}"
       }
@@ -134,6 +137,10 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage ("Deploy Helm chart(s) to ${namespace} namespace") {
+      // add repo (for requirements yaml charts) and pull dependencies
+      getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
+      getSteps().sh "helm dependency update ${path}"
+
       def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
       if (testOverrides) {
         commandString += " --set ${testOverrides}"
@@ -155,22 +162,27 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def chartName = getHelmChartName(chartsFolders[i])
           def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
           }
 
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            releaseName,
             testOverrides
           )
 
           try {
-            if (getSteps().fileExists("./test/e2e")) {
-              getSteps().sh("ginkgo ./test/e2e/ -- --service=http://${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}.staging.svc.cluster.local")
-              getSteps().junit("test/e2e/junit_*.xml")
+            if (getSteps().fileExists('./test/e2e')) {
+              // transform test dictionary into '--key=value' format
+              def e2eVars = getScript().getE2eVars {
+                e2e = getE2e()
+              }
+
+              getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
+              getSteps().junit('test/e2e/junit_*.xml')
             }
           } finally {
             deleteHelmRelease(releaseName)
@@ -179,7 +191,8 @@ class ApplicationPipeline implements Serializable {
       }
     }
   }
-
+  
+ 
   def smokeTestHelmCharts(namespace, releaseName) {
     bailOnUninitialized()
 
@@ -187,22 +200,22 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartPathComps = "${chartsFolders[i]}".split('/')
+          def chartName = getHelmChartName(chartsFolders[i])
           def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartPathComps[chartPathComps.size()-1], type: 'staging']
+            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
           }
-
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}",
+            releaseName,
             testOverrides
           )
 
           try {
-            if (getSteps().fileExists("./test/smoke/${chartPathComps[chartPathComps.size()-1]}")) {
-              getSteps().sh("ginkgo ./test/smoke/${chartPathComps[chartPathComps.size()-1]}/")
-              getSteps().junit("test/smoke/${chartPathComps[chartPathComps.size()-1]}/junit_*.xml")
+            def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
+            if (getSteps().fileExists("./test/smoke/src/${chartName}")) {
+              getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
+              getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
             }
           } finally {
             deleteHelmRelease(releaseName)
@@ -219,11 +232,19 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def getHelmChartVersion(chartName) {
+  def getHelmChartName(directory) {
+      bailOnUninitialized()
+      def chartYaml = getScript().parseYaml {
+         yaml = getSteps().readFile("${directory}/Chart.yaml")
+      }
+      return chartYaml.name
+  }
+  
+  def getHelmChartVersion(directory) {
     bailOnUninitialized()
 
     def chartYaml = getScript().parseYaml {
-      yaml = getSteps().readFile("charts/${chartName}/Chart.yaml")
+      yaml = getSteps().readFile("${directory}/Chart.yaml")
     }
 
     return chartYaml.version
@@ -389,17 +410,21 @@ class ApplicationPipeline implements Serializable {
               // without uploading to helm repo
               lintHelmCharts()
 
-              // test the deployed charts, destroy the deployments
-              smokeTestHelmCharts(
-                'staging', 
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
-              )
-
-              if (getPipeline().deploy) {
-                e2eTestHelmCharts(
+              // lock on helm release name - this way we can avoid 
+              // port name collisions between concurrently running PR jobs
+              getSteps().lock(getPipeline().helm) {
+                // test the deployed charts, destroy the deployments
+                smokeTestHelmCharts(
                   'staging', 
                   "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
                 )
+
+                if (getPipeline().deploy) {
+                  e2eTestHelmCharts(
+                    'staging', 
+                    "${getPipeline().helm}-e2e"
+                  )
+                }
               }
             } else {
               // commit changes to Chart.yaml and values.yaml to github
@@ -414,17 +439,16 @@ class ApplicationPipeline implements Serializable {
                 def chartsFolders = getScript().listFolders('./charts')
                 for (def i = 0; i < chartsFolders.size(); i++) {
                   if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-                    def chartPathComps = "${chartsFolders[i]}".split('/')
                     def prodOverrides = getScript().getOverrides {
                       overrides = [
                         pipeline: getPipeline(), 
-                        chart: chartPathComps[chartPathComps.size()-1], 
+                        chart: getHelmChartName("${chartsFolders[i]}"), 
                         type: 'prod'
                       ]
                     }
-
+                    
                     upgradeHelmCharts(
-                      chartPathComps[chartPathComps.size()-1], 
+                      chartsFolders[i], 
                       getScript().getGitSha(), 
                       prodOverrides
                     )

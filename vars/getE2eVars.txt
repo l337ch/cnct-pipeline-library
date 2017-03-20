@@ -1,0 +1,19 @@
+Returns a ginkgo-compatible flag list for passing values to test suites
+
+For example, given a map
+  dict = [
+    service: 'http://zonar-gprsd-e2e.staging.svc.cluster.local',
+    dostuff: true,
+    port: 12345
+  ]
+
+And a call to getE2eVars:
+
+  e2eVars = getE2eVars {
+    e2e = dict
+  }
+  println e2eVars
+
+Might result in something like:
+
+  --service=http://zonar-gprsd-e2e.staging.svc.cluster.local --dostuff=true --port=12345
