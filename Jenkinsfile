@@ -1,8 +1,8 @@
 #!/usr/bin/env groovy
 
-node ("CI-library") {
+node {
 	print "testing library PR ${env.CHANGE_ID}"
-	def lib = library("pipeline@refs/remotes/origin/pr/100")
+	def lib = library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
 	
 	applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
 	  steps, 
