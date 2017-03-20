@@ -1,6 +1,4 @@
 #!/usr/bin/env groovy
-@Library('pipeline')
-import net.zonarsystems.pipeline.ApplicationPipeline
 
 def runTest(applicationPipeline) {
 	applicationPipeline = new ApplicationPipeline(
@@ -25,7 +23,8 @@ node {
 		runTest(applicationPipeline)
 	} else {
 		print "testing library on master"
-		applicationPipeline = new ApplicationPipeline(
+		def lib = library("pipeline")
+		applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new.ApplicationPipeline(
 		  steps, 
 		  'pipelinelibrary', 
 		  this
