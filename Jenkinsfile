@@ -13,7 +13,7 @@ def runTest(applicationPipeline) {
 }
 
 node {
- 	if (getEnvironment().CHANGE_ID) {
+ 	if (env.CHANGE_ID) {
 		print "testing library PR ${env.CHANGE_ID}"
 		def lib = library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
 		
