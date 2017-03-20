@@ -2,8 +2,8 @@
 
 node ("CI-library") {
 	print "testing library PR ${env.CHANGE_ID}"
-	@Library("pipeline@refs/remotes/origin/pr/100")
-	import net.zonarsystems.pipeline.ApplicationPipeline
+	
+	import library("pipeline@refs/remotes/origin/pr/100").net.zonarsystems.pipeline.ApplicationPipeline
 	
 	applicationPipeline = new ApplicationPipeline(
 	  steps, 
