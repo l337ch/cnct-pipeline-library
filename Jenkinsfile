@@ -1,11 +1,6 @@
 #!/usr/bin/env groovy
 
 def runTest(applicationPipeline) {
-	applicationPipeline = new ApplicationPipeline(
-	  steps, 
-	  'gprsd', 
-	  this
-	)
 	applicationPipeline.init()
 	applicationPipeline.pipelineRun()
 }
