@@ -211,7 +211,7 @@ class ApplicationPipeline implements Serializable {
           )
 
           try {
-            def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('+','_')}"
+            def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
             if (getSteps().fileExists("./test/smoke/src/${chartName}")) {
               getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
               getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
