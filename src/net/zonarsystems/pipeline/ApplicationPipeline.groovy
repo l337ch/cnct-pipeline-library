@@ -24,7 +24,7 @@ class ApplicationPipeline implements Serializable {
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script, e2e = [:], overrides = [:] ) {
+  ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:]) {
     this.steps = steps
     this.application = application
     this.script = script
