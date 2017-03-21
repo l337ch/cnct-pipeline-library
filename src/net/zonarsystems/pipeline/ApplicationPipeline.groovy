@@ -17,17 +17,19 @@ class ApplicationPipeline implements Serializable {
 
   def helpers
   def e2e
+  def overrides
   
   def ready = false
   def uniqueJenkinsId = ''
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script, e2e = [:] ) {
+  ApplicationPipeline(steps, application, script, e2e = [:], overrides = [:] ) {
     this.steps = steps
     this.application = application
     this.script = script
     this.e2e = e2e
+    this.overrides = overrides
   }
 
   def pipelineCheckout() {
@@ -58,15 +60,18 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def upgradeHelmCharts(directory, dockerImagesTag, overrides) {
+  def upgradeHelmCharts(directory, dockerImagesTag) {
     bailOnUninitialized()
 
     getSteps().stage ('Deploy Helm chart(s)') {
       def chartName = getHelmChartName(directory)
       def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(directory)} --install --namespace prod"
-      if (overrides) {
-        upgradeString += " --set ${overrides}"
+      
+      def prodOverrides = getChartOverrides(getOverrides(), chartName, 'prod')
+      if (prodOverrides) {
+        upgradeString += " --set ${prodOverrides}"
       }
+
       // add repo
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       // update dependencies
@@ -133,15 +138,18 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def deployHelmChartsFromPath(path, namespace, releaseName, testOverrides) {
+  def deployHelmChartsFromPath(path, namespace, releaseName) {
     bailOnUninitialized()
 
     getSteps().stage ("Deploy Helm chart(s) to ${namespace} namespace") {
+      def chartName = getHelmChartName(path)
+
       // add repo (for requirements yaml charts) and pull dependencies
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       getSteps().sh "helm dependency update ${path}"
 
       def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
+      def testOverrides = getChartOverrides(getOverrides(), chartName, 'staging')
       if (testOverrides) {
         commandString += " --set ${testOverrides}"
       }
@@ -162,16 +170,10 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartName = getHelmChartName(chartsFolders[i])
-          def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
-          }
-
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            releaseName,
-            testOverrides
+            releaseName
           )
 
           try {
@@ -201,14 +203,11 @@ class ApplicationPipeline implements Serializable {
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           def chartName = getHelmChartName(chartsFolders[i])
-          def testOverrides = getScript().getOverrides {
-            overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
-          }
+          
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            releaseName,
-            testOverrides
+            releaseName
           )
 
           try {
@@ -361,6 +360,22 @@ class ApplicationPipeline implements Serializable {
     ready = true
   }
 
+  @NonCPS
+  def getChartOverrides(allOverrides, chart, type) {
+    def res = null
+
+    if (allOverrides) {
+      chartOverrides = allOverrides.get(chart).get(overrideType)
+      if (chartOverrides) {
+        res = chartOverrides.inject([]) { result, entry ->
+          result << "${entry.key}=${entry.value.toString()}"
+        }.join(',')
+      }
+    }
+
+    return res 
+  }
+
   def pipelineRun() {
     bailOnUninitialized();
 
@@ -438,19 +453,10 @@ class ApplicationPipeline implements Serializable {
               if (getPipeline().deploy) {
                 def chartsFolders = getScript().listFolders('./charts')
                 for (def i = 0; i < chartsFolders.size(); i++) {
-                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-                    def prodOverrides = getScript().getOverrides {
-                      overrides = [
-                        pipeline: getPipeline(), 
-                        chart: getHelmChartName("${chartsFolders[i]}"), 
-                        type: 'prod'
-                      ]
-                    }
-                    
+                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {                    
                     upgradeHelmCharts(
                       chartsFolders[i], 
-                      getScript().getGitSha(), 
-                      prodOverrides
+                      getScript().getGitSha()
                     )
                   }
                 }                
