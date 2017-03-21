@@ -367,7 +367,7 @@ class ApplicationPipeline implements Serializable {
     if (allOverrides) {
       chartOverrides = allOverrides.get(chart).get(overrideType)
       if (chartOverrides) {
-        def res = chartOverrides.inject([]) { result, entry ->
+        res = chartOverrides.inject([]) { result, entry ->
           result << "${entry.key}=${entry.value.toString()}"
         }.join(',')
       }
