@@ -410,7 +410,7 @@ class ApplicationPipeline implements Serializable {
           def commiterName = getSteps().sh(returnStdout: true, script: 'git show -s --pretty=%an').trim()
           def causedByTimer = getScript().currentBuild.rawBuild.getCause(hudson.triggers.TimerTrigger$TimerTriggerCause)
 
-          if (commiterName == getSettings().githubAdmin && causedByTimer != null) {
+          if (commiterName == getSettings().githubAdmin && causedByTimer == null) {
             notifyMessage = 'Skipping bot repository merge ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
           } else {
             // Inside jenkins-gke tool container
