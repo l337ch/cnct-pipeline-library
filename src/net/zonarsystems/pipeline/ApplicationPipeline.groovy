@@ -148,7 +148,7 @@ class ApplicationPipeline implements Serializable {
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       getSteps().sh "helm dependency update ${path}"
 
-      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
+      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace} --wait" 
       def testOverrides = getChartOverrides(getOverrides(), chartName, 'staging')
       if (testOverrides) {
         commandString += " --set ${testOverrides}"
