@@ -410,67 +410,66 @@ class ApplicationPipeline implements Serializable {
           def commiterName = getSteps().sh(returnStdout: true, script: 'git show -s --pretty=%an').trim()
           if (commiterName == getSettings().githubAdmin) {
             notifyMessage = 'Skipping bot repository merge' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
-            break;
-          }
+          } else {
+            // Inside jenkins-gke tool container
+            getSteps().container('gke') { 
+              // pull kubeconfig from GKE and init helm
+              initKubeAndHelm()
 
-          // Inside jenkins-gke tool container
-          getSteps().container('gke') { 
-            // pull kubeconfig from GKE and init helm
-            initKubeAndHelm()
+              // build docker containers and push them with current SHA tag
+              buildAndPushContainersWithTag(getScript().getGitSha())
 
-            // build docker containers and push them with current SHA tag
-            buildAndPushContainersWithTag(getScript().getGitSha())
+              // inject new docker tags into default values.yaml
+              setDefaultValues(getScript().getGitSha())
 
-            // inject new docker tags into default values.yaml
-            setDefaultValues(getScript().getGitSha())
+              // update chart semver metadata
+              updateChartVersionMetadata(getScript().getGitSha())
 
-            // update chart semver metadata
-            updateChartVersionMetadata(getScript().getGitSha())
+              // if this is a Pull Request change
+              if (getEnvironment().CHANGE_ID) {
 
-            // if this is a Pull Request change
-            if (getEnvironment().CHANGE_ID) {
+                // lint, and deploy charts to staging namespace 
+                // with injected docker tag values
+                // and injected test values 
+                // without uploading to helm repo
+                lintHelmCharts()
 
-              // lint, and deploy charts to staging namespace 
-              // with injected docker tag values
-              // and injected test values 
-              // without uploading to helm repo
-              lintHelmCharts()
-
-              // lock on helm release name - this way we can avoid 
-              // port name collisions between concurrently running PR jobs
-              getSteps().lock(getPipeline().helm) {
-                // test the deployed charts, destroy the deployments
-                smokeTestHelmCharts(
-                  'staging', 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
-                )
-
-                if (getPipeline().deploy) {
-                  e2eTestHelmCharts(
+                // lock on helm release name - this way we can avoid 
+                // port name collisions between concurrently running PR jobs
+                getSteps().lock(getPipeline().helm) {
+                  // test the deployed charts, destroy the deployments
+                  smokeTestHelmCharts(
                     'staging', 
-                    "${getPipeline().helm}-e2e"
+                    "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
                   )
-                }
-              }
-            } else {
-              // commit changes to Chart.yaml and values.yaml to github
-              pushChangesToGithub()
 
-              // package and upload charts to helm repo
-              uploadChartsToRepo()
-
-              // if pipeline component is marked deployable,
-              // deploy it.
-              if (getPipeline().deploy) {
-                def chartsFolders = getScript().listFolders('./charts')
-                for (def i = 0; i < chartsFolders.size(); i++) {
-                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {                    
-                    upgradeHelmCharts(
-                      chartsFolders[i], 
-                      getScript().getGitSha()
+                  if (getPipeline().deploy) {
+                    e2eTestHelmCharts(
+                      'staging', 
+                      "${getPipeline().helm}-e2e"
                     )
                   }
-                }                
+                }
+              } else {
+                // commit changes to Chart.yaml and values.yaml to github
+                pushChangesToGithub()
+
+                // package and upload charts to helm repo
+                uploadChartsToRepo()
+
+                // if pipeline component is marked deployable,
+                // deploy it.
+                if (getPipeline().deploy) {
+                  def chartsFolders = getScript().listFolders('./charts')
+                  for (def i = 0; i < chartsFolders.size(); i++) {
+                    if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {                    
+                      upgradeHelmCharts(
+                        chartsFolders[i], 
+                        getScript().getGitSha()
+                      )
+                    }
+                  }                
+                }
               }
             }
           }
