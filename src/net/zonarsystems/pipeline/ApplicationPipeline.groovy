@@ -409,7 +409,7 @@ class ApplicationPipeline implements Serializable {
           // Prevent neverending build loop with bot checking in values.yaml and triggering another build
           def commiterName = getSteps().sh(returnStdout: true, script: 'git show -s --pretty=%an').trim()
           if (commiterName == getSettings().githubAdmin) {
-            notifyMessage = 'Skipping bot repository merge' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
+            notifyMessage = 'Skipping bot repository merge ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
           } else {
             // Inside jenkins-gke tool container
             getSteps().container('gke') { 
