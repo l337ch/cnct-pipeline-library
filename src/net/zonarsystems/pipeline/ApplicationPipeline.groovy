@@ -383,7 +383,12 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized();
 
     // no concurrent master or PR builds, as charts use cluster-unique resources.
-    getSteps().properties([getSteps().disableConcurrentBuilds()])
+    getSteps().properties(
+      [
+        getSteps().disableConcurrentBuilds(),
+        pipelineTriggers([cron('*/5 * * * *')])
+      ]
+    )
 
     getSteps().podTemplate(label: "CI-${application}", containers: [
       getSteps().containerTemplate(name: 'gke', image: 'gcr.io/sds-readiness/jenkins-gke:latest', ttyEnabled: true, command: 'cat', alwaysPullImage: true),
