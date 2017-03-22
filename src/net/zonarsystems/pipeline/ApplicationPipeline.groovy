@@ -402,6 +402,13 @@ class ApplicationPipeline implements Serializable {
         def notifyColor = 'good'
 
         try {
+
+          getSteps().stage ('Commiter bot check') {
+            if (getEnvironment().CHANGE_AUTHOR == getSettings().githubAdmin) {
+              notifyMessage = 'Skipping bot repository merge' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
+            } 
+          }
+
           // Checkout source code, from PR or master
           pipelineCheckout()
 
