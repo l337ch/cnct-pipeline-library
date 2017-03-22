@@ -148,7 +148,7 @@ class ApplicationPipeline implements Serializable {
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       getSteps().sh "helm dependency update ${path}"
 
-      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace}" 
+      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace} --wait" 
       def testOverrides = getChartOverrides(getOverrides(), chartName, 'staging')
       if (testOverrides) {
         commandString += " --set ${testOverrides}"
@@ -402,6 +402,13 @@ class ApplicationPipeline implements Serializable {
         def notifyColor = 'good'
 
         try {
+
+          getSteps().stage ('Commiter bot check') {
+            if (getEnvironment().CHANGE_AUTHOR == getSettings().githubAdmin) {
+              notifyMessage = 'Skipping bot repository merge' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
+            } 
+          }
+
           // Checkout source code, from PR or master
           pipelineCheckout()
 
