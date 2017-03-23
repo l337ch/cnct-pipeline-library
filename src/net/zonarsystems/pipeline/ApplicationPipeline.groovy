@@ -379,6 +379,22 @@ class ApplicationPipeline implements Serializable {
     return res 
   }
 
+  @NonCPS
+  def isJobStartedByTimer(build) {
+    def startedByTimer = false
+    def buildCauses = build.rawBuild.getCauses()
+    for ( buildCause in buildCauses ) {
+      if (buildCause != null) {
+        def causeDescription = buildCause.getShortDescription()
+        if (causeDescription.contains("Started by timer")) {
+          startedByTimer = true
+        }
+      }
+    }
+
+    return startedByTimer
+  }
+
   def pipelineRun() {
     bailOnUninitialized();
 
@@ -413,9 +429,11 @@ class ApplicationPipeline implements Serializable {
 
           // Prevent neverending build loop with bot checking in values.yaml and triggering another build
           def commiterName = getSteps().sh(returnStdout: true, script: 'git show -s --pretty=%an').trim()
-          def causedByTimer = getScript().currentBuild.rawBuild.getCause(hudson.triggers.TimerTrigger$TimerTriggerCause)
-
-          if (commiterName == getSettings().githubAdmin && causedByTimer == null) {
+          
+          // Alaways allow timer builds
+          def causedByTimer = isJobStartedByTimer(getScript().currentBuild)
+          
+          if (commiterName == getSettings().githubAdmin && causedByTimer == false) {
             notifyMessage = 'Skipping bot repository merge ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
           } else {
             // Inside jenkins-gke tool container
