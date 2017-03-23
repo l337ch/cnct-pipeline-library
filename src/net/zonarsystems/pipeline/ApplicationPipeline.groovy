@@ -386,7 +386,7 @@ class ApplicationPipeline implements Serializable {
     getSteps().properties(
       [
         getSteps().disableConcurrentBuilds(),
-        pipelineTriggers([cron('*/5 * * * *')])
+        getSteps().pipelineTriggers([getSteps().cron('*/5 * * * *')])
       ]
     )
 
