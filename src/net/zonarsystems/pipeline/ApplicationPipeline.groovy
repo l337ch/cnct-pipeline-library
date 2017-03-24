@@ -211,7 +211,7 @@ class ApplicationPipeline implements Serializable {
               )
               try {
                 def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
-                getSteps().sh("./test/smoke/bin/${chartName}.test --  -chartName=${versionedChartName} -namespace=${namespace}")
+                getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
                 getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
               } finally {
                 deleteHelmRelease(releaseName)
