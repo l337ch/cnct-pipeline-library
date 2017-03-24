@@ -204,14 +204,10 @@ class ApplicationPipeline implements Serializable {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           def chartName = getHelmChartName(chartsFolders[i])
           if (getSteps().fileExists("./test/smoke/bin/${chartName}.test")) {
-              def testOverrides = getScript().getOverrides {
-                overrides = [pipeline: getPipeline(), chart: chartName, type: 'staging']
-              }
               deployHelmChartsFromPath(
                 chartsFolders[i],
                 'staging',  
-                releaseName,
-                testOverrides
+                releaseName
               )
               try {
                 def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
