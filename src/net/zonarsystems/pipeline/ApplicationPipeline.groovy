@@ -198,7 +198,7 @@ class ApplicationPipeline implements Serializable {
   def smokeTestHelmCharts(namespace, releaseName) {
     bailOnUninitialized()
 
-    getSteps().stage ('Helm chart(s) smoke testing') {
+    getSteps().stage ('Determine if smoke testing necessary') {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
@@ -210,9 +210,11 @@ class ApplicationPipeline implements Serializable {
                 releaseName
               )
               try {
-                def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
-                getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
-                getSteps().junit("junit_*.xml")
+                getSteps().stage ("execute smoke tests") {
+                   def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
+                   getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
+                   getSteps().junit("junit_*.xml")
+                }
               } finally {
                 deleteHelmRelease(releaseName)
               }
