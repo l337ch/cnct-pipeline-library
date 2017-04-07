@@ -408,11 +408,6 @@ class ApplicationPipeline implements Serializable {
 
     getSteps().podTemplate(label: "CI-${application}", containers: [
       getSteps().containerTemplate(
-        name: 'jnlp', 
-        image: 'jenkinsci/jnlp-slave:2.62-alpine',
-        args: '${computer.jnlpmac} ${computer.name}',
-        alwaysPullImage: true),
-      getSteps().containerTemplate(
         name: 'gke', 
         image: 'gcr.io/sds-readiness/jenkins-gke:latest', 
         ttyEnabled: true, 
@@ -423,6 +418,10 @@ class ApplicationPipeline implements Serializable {
       getSteps().hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
       getSteps().secretVolume(mountPath: '/etc/gke', secretName: "jenkins-gke-${uniqueJenkinsId}"),
       getSteps().secretVolume(mountPath: '/etc/helm', secretName: "jenkins-helm-${uniqueJenkinsId}")
+    ],
+    envVars: [
+      getSteps().containerEnvVar(key: 'JENKINS_SECRET', value: null),
+      getSteps().containerEnvVar(key: 'JENKINS_NAME', value: null),
     ]) {
       
       getSteps().node ("CI-${application}") {
