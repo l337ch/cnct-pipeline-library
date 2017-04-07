@@ -410,7 +410,8 @@ class ApplicationPipeline implements Serializable {
       getSteps().containerTemplate(
         name: 'jnlp', 
         image: 'jenkinsci/jnlp-slave:2.62-alpine',
-        args: '${computer.jnlpmac} ${computer.name}'),
+        args: '${computer.jnlpmac} ${computer.name}',
+        alwaysPullImage: true),
       getSteps().containerTemplate(
         name: 'gke', 
         image: 'gcr.io/sds-readiness/jenkins-gke:latest', 
