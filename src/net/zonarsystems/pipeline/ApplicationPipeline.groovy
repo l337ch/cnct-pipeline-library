@@ -332,7 +332,15 @@ class ApplicationPipeline implements Serializable {
 
   // init things that need node context
   def init() {
-    getSteps().podTemplate(label: "env-${application}", containers: [], volumes: []) {
+    getSteps().podTemplate(
+      label: "env-${application}", 
+      containers: [], 
+      volumes: [],
+      envVars: [
+        getSteps().containerEnvVar(key: 'JENKINS_SECRET', value: null),
+        getSteps().containerEnvVar(key: 'JENKINS_NAME', value: null),
+      ]
+      ) {
       getSteps().node ("env-${application}") {
         this.settings = getFileLoader().fromGit(
           'settings', 
