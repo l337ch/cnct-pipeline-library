@@ -407,6 +407,7 @@ class ApplicationPipeline implements Serializable {
     )
 
     getSteps().podTemplate(label: "CI-${application}", containers: [
+      getSteps().containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:latest'),
       getSteps().containerTemplate(name: 'gke', image: 'gcr.io/sds-readiness/jenkins-gke:latest', ttyEnabled: true, command: 'cat', alwaysPullImage: true),
     ],
     volumes: [
