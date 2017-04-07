@@ -414,9 +414,17 @@ class ApplicationPipeline implements Serializable {
         envVars: [
             getSteps().containerEnvVar(key: 'JENKINS_SECRET', value: ''),
             getSteps().containerEnvVar(key: 'JENKINS_NAME', value: ''),
-        ]
-      ),
-      getSteps().containerTemplate(name: 'gke', image: 'gcr.io/sds-readiness/jenkins-gke:latest', ttyEnabled: true, command: 'cat', alwaysPullImage: true),
+        ]),
+      getSteps().containerTemplate(
+        name: 'gke', 
+        image: 'gcr.io/sds-readiness/jenkins-gke:latest', 
+        ttyEnabled: true, 
+        command: 'cat', 
+        alwaysPullImage: true,
+        envVars: [
+            getSteps().containerEnvVar(key: 'JENKINS_SECRET', value: ''),
+            getSteps().containerEnvVar(key: 'JENKINS_NAME', value: ''),
+        ]),
     ],
     volumes: [
       getSteps().hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
