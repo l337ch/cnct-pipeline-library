@@ -88,6 +88,7 @@ class ApplicationPipeline implements Serializable {
     getSteps().stage ('Init kubectl and helm') {
       getSteps().sh """
   gcloud container clusters get-credentials ${getEnvironment().GKE_CLUSTER_NAME} --zone ${getEnvironment().GKE_PRIMARY_ZONE} --project ${getEnvironment().GKE_PROJECT_NAME}
+  kubectl cluster-info
   helm init
   """
     }
