@@ -224,6 +224,7 @@ class ApplicationPipeline implements Serializable {
                deleteHelmRelease(releaseName)
             }
         }
+      }
     }
   }
 
