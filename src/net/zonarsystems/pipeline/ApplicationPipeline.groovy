@@ -203,25 +203,27 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
-          def chartName = getHelmChartName(chartsFolders[i])
-          if (getSteps().fileExists("./test/smoke/bin/${chartName}.test")) {
-              deployHelmChartsFromPath(
-                chartsFolders[i],
-                'staging',  
-                releaseName
-              )
-              try {
+            def chartName = getHelmChartName(chartsFolders[i])
+            try {
+                deployHelmChartsFromPath(
+                  chartsFolders[i],
+                  'staging',
+                  releaseName
+                )
                 getSteps().stage ("execute smoke tests") {
-                   def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
-                   getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
-                   getSteps().junit("junit_*.xml")
+                    def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
+                    if (getSteps().fileExists("./test/smoke/bin/${chartName}.test")) {
+                       getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
+                       getSteps().junit("junit_*.xml")
+                     } else {
+                       getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
+                       getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
+                     }
                 }
-              } finally {
-                deleteHelmRelease(releaseName)
-              }
-         }
+            } finally {
+               deleteHelmRelease(releaseName)
+            }
         }
-      }
     }
   }
 
