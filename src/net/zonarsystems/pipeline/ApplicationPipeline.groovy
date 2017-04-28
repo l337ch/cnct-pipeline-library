@@ -211,14 +211,7 @@ class ApplicationPipeline implements Serializable {
                   releaseName
                 )
                 getSteps().stage ("execute smoke tests") {
-                    def versionedChartName="${chartName}-${getHelmChartVersion(chartsFolders[i]).replaceAll('\\+','_')}"
-                    if (getSteps().fileExists("./test/smoke/bin/${chartName}.test")) {
-                       getSteps().sh("./test/smoke/bin/${chartName}.test -chartName=${versionedChartName} -namespace=${namespace}")
-                       getSteps().junit("junit_*.xml")
-                     } else if (getSteps().fileExists("/test/smoke/src/${chartName}")) {
-                       getSteps().sh("export GOPATH=`pwd`/test/smoke && ginkgo ./test/smoke/src/${chartName}/ --  -chartName=${versionedChartName} -namespace=${namespace}")
-                       getSteps().junit("test/smoke/src/${chartName}/junit_*.xml")
-                     }
+                  getSteps().sh("helm test ${releaseName} --cleanup")
                 }
             } finally {
                deleteHelmRelease(releaseName)
