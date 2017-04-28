@@ -420,7 +420,7 @@ class ApplicationPipeline implements Serializable {
         args: '${computer.jnlpmac} ${computer.name}'),
       getSteps().containerTemplate(
         name: 'gke', 
-        image: 'gcr.io/sds-readiness/jenkins-gke:latest', 
+        image: "${getSettings().dockerRegistry}/jenkins-gke:latest", 
         ttyEnabled: true, 
         command: 'cat', 
         alwaysPullImage: true),
