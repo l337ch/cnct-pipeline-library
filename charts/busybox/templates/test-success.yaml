@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{.Release.Name}}-expect-to-succeed"
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: "{{.Release.Name}}-smoke-test"
+      image: "busybox"
+      command: ["true"]
+  restartPolicy: Never
