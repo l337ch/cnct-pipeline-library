@@ -1,4 +1,4 @@
 apiVersion: v1
 description: A chart about nothing
 name: busybox
-version: 0.1.0+1912617c4611d78c8a398a243d3005c2a08bc947
+version: 0.1.0+b3642723baa99ae34a36ce96f60521f8915d27c9
