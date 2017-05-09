@@ -213,10 +213,12 @@ class ApplicationPipeline implements Serializable {
                   releaseName
                 )
                 getSteps().stage ("execute smoke tests") {
-                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
-                  if (testStdout ==~ /(?s).*FAILED\:.*/) {
-                    getSteps().error "Smoke test error: ${testStdout}"
-                  } 
+                  getSteps().retry(getSettings().maxRetry) {
+                    def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
+                    if (testStdout ==~ /(?s).*FAILED\:.*/) {
+                      getSteps().error "Smoke test error: ${testStdout}"
+                    } 
+                  }
                 }
             } finally {
                deleteHelmRelease(releaseName)
