@@ -185,9 +185,11 @@ class ApplicationPipeline implements Serializable {
               }
 
               getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
-              getSteps().junit('test/e2e/junit_*.xml')
             }
           } finally {
+            if (getSteps().fileExists('./test/e2e/junit_1.xml')) {
+              getSteps().junit('test/e2e/junit_*.xml')
+            }
             deleteHelmRelease(releaseName)
           }
         }
