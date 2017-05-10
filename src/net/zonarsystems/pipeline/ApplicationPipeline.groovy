@@ -205,24 +205,26 @@ class ApplicationPipeline implements Serializable {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+          if (getPipeline().smoketest) {  
             def chartName = getHelmChartName(chartsFolders[i])
             try {
-                deployHelmChartsFromPath(
-                  chartsFolders[i],
-                  'staging',
-                  releaseName
-                )
-                getSteps().stage ("execute smoke tests") {
-                  getSteps().retry(getSettings().maxRetry) {
-                    def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
-                    if (testStdout ==~ /(?s).*FAILED\:.*/) {
-                      getSteps().error "Smoke test error: ${testStdout}"
-                    } 
-                  }
+              deployHelmChartsFromPath(
+                chartsFolders[i],
+                'staging',
+                releaseName
+              )
+              getSteps().stage ("execute smoke tests") {
+                getSteps().retry(getSettings().maxRetry) {
+                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
+                  if (testStdout ==~ /(?s).*FAILED\:.*/) {
+                    getSteps().error "Smoke test error: ${testStdout}"
+                  } 
                 }
+              }
             } finally {
-               deleteHelmRelease(releaseName)
+              deleteHelmRelease(releaseName)
             }
+          }
         }
       }
     }
