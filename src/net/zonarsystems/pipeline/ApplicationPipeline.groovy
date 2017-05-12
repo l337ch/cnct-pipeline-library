@@ -111,8 +111,13 @@ class ApplicationPipeline implements Serializable {
           if (getSteps().fileExists("${dockerfileFolders[i]}/Makefile")) {
             getSteps().sh "make -C ${dockerfileFolders[i]}"
           }
-          
-          getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
+
+          def useArtifactory = getSteps().sh(returnSatus: true, script: "grep \"ARG ARTIFACTORY_IP=\" ${dockerfileFolders[i]}/Dockerfile")
+          if (useArtifactory == 0) {
+            getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
+          } else {
+            getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} ${dockerfileFolders[i]}"
+          }
           getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
         }
       }
