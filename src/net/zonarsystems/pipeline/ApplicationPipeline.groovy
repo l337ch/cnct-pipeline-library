@@ -167,19 +167,22 @@ class ApplicationPipeline implements Serializable {
   def lintHelmCharts() {
     bailOnUninitialized()
 
-    getSteps().stage ('Lint Helm chart(s)') {
-      chartMake('lint -C charts')
+    if (getSteps().fileExists('./charts')) {
+      getSteps().stage ('Lint Helm chart(s)') {
+        chartMake('lint -C charts')
+      }
     }
   }
 
   def uploadChartsToRepo() {
     bailOnUninitialized()
-
-    getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().retry(getSettings().maxRetry) {
-        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
-        chartMake('all -C charts')
-        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+    if (getSteps().fileExists('./charts')) {
+      getSteps().stage ('Upload Helm chart(s) to helm repo') {
+        getSteps().retry(getSettings().maxRetry) {
+          getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
+          chartMake('all -C charts')
+          getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+        }
       }
     }
   }
@@ -462,9 +465,11 @@ class ApplicationPipeline implements Serializable {
             // pull kubeconfig from GKE and init helm
             initKubeAndHelm()
 
-            // build docker containers and push them with current SHA tag
+            // build docker containers and push them with current SHA tag and 'latest'
             buildContainersWithTag(getScript().getGitSha())
             pushContainersWithTag(getScript().getGitSha())
+            tagContainers(getScript().getGitSha(), 'latest')
+            pushContainersWithTag('latest')
             
             // update chart semver metadata
             updateChartVersionMetadata(getScript().getGitSha())
@@ -487,13 +492,13 @@ class ApplicationPipeline implements Serializable {
 
               // lock on helm release name - this way we can avoid 
               // port name collisions between concurrently running PR jobs
-              getSteps().lock(getPipeline().helm) {
-                // test the deployed charts, destroy the deployments
-                smokeTestHelmCharts(
-                  'staging', 
-                  "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
-                )
+              // test the deployed charts, destroy the deployments
+              smokeTestHelmCharts(
+                'staging', 
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+              )
 
+              getSteps().lock(getPipeline().helm) {
                 if (getPipeline().deploy) {
                   e2eTestHelmCharts(
                     'staging', 
