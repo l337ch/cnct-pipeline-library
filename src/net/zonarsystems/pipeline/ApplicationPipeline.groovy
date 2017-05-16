@@ -426,7 +426,8 @@ class ApplicationPipeline implements Serializable {
     // no concurrent master or PR builds, as charts use cluster-unique resources.
     getSteps().properties(
       [
-        getSteps().disableConcurrentBuilds()
+        getSteps().disableConcurrentBuilds(),
+        getSteps().pipelineTriggers([getSteps().cron(getSettings().crontab)])
       ]
     )
 
