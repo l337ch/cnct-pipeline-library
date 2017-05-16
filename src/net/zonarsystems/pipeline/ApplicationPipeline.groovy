@@ -22,6 +22,9 @@ class ApplicationPipeline implements Serializable {
   def ready = false
   def uniqueJenkinsId = ''
 
+  final STAGING_TAG = "staging"
+  final PROD_TAG = "prod"
+
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
   ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:]) {
@@ -94,10 +97,10 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def buildAndPushContainersWithTag(imageTag) {
+  def buildContainersWithTag(imageTag) {
     bailOnUninitialized()
 
-    getSteps().stage ('Build and push docker containers') {
+    getSteps().stage ('Build docker containers') {
       // if there is a docker file directly under rootfs - build it 
       // and name the GCR repo after the pipeline name
       // otherwise
@@ -118,7 +121,44 @@ class ApplicationPipeline implements Serializable {
           } else {
             getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} ${dockerfileFolders[i]}"
           }
+        }
+      }
+    }
+  }
+
+  def pushContainersWithTag(imageTag) {
+    bailOnUninitialized()
+
+    getSteps().stage ('Push docker containers') {
+      // if there is a docker file directly under rootfs - build it 
+      // and name the GCR repo after the pipeline name
+      // otherwise
+      // enumerate all the folders under rootfs and build Dockerfiles in each one
+      // name the GCR repo after foldername
+      def dockerfileFolders = getScript().listFolders('./rootfs')
+      for (def i = 0; i < dockerfileFolders.size(); i++) {
+        if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
+          def imageName = dockerfileFolders[i].split('/').last()
           getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
+        }
+      }
+    }
+  }
+
+  def tagContainers(currentTag, newTag) {
+    bailOnUninitialized()
+
+    getSteps().stage ('Push docker containers') {
+      // if there is a docker file directly under rootfs - build it 
+      // and name the GCR repo after the pipeline name
+      // otherwise
+      // enumerate all the folders under rootfs and build Dockerfiles in each one
+      // name the GCR repo after foldername
+      def dockerfileFolders = getScript().listFolders('./rootfs')
+      for (def i = 0; i < dockerfileFolders.size(); i++) {
+        if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
+          def imageName = dockerfileFolders[i].split('/').last()
+          getSteps().sh "gcloud docker -- tag ${getSettings().dockerRegistry}/${imageName}:${currentTag} ${getSettings().dockerRegistry}/${imageName}:${newTag}"
         }
       }
     }
@@ -127,19 +167,22 @@ class ApplicationPipeline implements Serializable {
   def lintHelmCharts() {
     bailOnUninitialized()
 
-    getSteps().stage ('Lint Helm chart(s)') {
-      chartMake('lint -C charts')
+    if (getSteps().fileExists('./charts')) {
+      getSteps().stage ('Lint Helm chart(s)') {
+        chartMake('lint -C charts')
+      }
     }
   }
 
   def uploadChartsToRepo() {
     bailOnUninitialized()
-
-    getSteps().stage ('Upload Helm chart(s) to helm repo') {
-      getSteps().retry(getSettings().maxRetry) {
-        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
-        chartMake('all -C charts')
-        getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+    if (getSteps().fileExists('./charts')) {
+      getSteps().stage ('Upload Helm chart(s) to helm repo') {
+        getSteps().retry(getSettings().maxRetry) {
+          getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
+          chartMake('all -C charts')
+          getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
+        }
       }
     }
   }
@@ -202,7 +245,6 @@ class ApplicationPipeline implements Serializable {
     }
   }
   
- 
   def smokeTestHelmCharts(namespace, releaseName) {
     bailOnUninitialized()
 
@@ -294,7 +336,7 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def setDefaultValues(gitSha) {
+  def setDefaultValues(useTag) {
     bailOnUninitialized()
 
     getSteps().stage ('Inject new docker tags into values.yaml') {
@@ -311,7 +353,7 @@ class ApplicationPipeline implements Serializable {
 
           if (reqYaml.images && reqYaml.images[imageName]) {
             // toString() is required, otherwise snakeyaml will serialize this into something that is not a string.
-            reqYaml.images[imageName] = "${getSettings().dockerRegistry}/${imageName}:${gitSha}".toString()
+            reqYaml.images[imageName] = "${getSettings().dockerRegistry}/${imageName}:${useTag}".toString()
           }
         }
 
@@ -322,21 +364,6 @@ class ApplicationPipeline implements Serializable {
 
         // write to file
         getSteps().writeFile(file: "${chartsFolders[i]}/values.yaml", text: changedYAML)
-      }
-    }
-  }
-
-  def pushChangesToGithub() {
-    bailOnUninitialized()
-
-    getSteps().stage ('Push changes to github if needed') {
-      getSteps().withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: getSettings().githubScanCredentials, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
-        getSteps().sh("git config user.name \"${getSettings().githubAdmin}\"")
-        getSteps().sh("git config user.email \"${getSettings().githubAdmin}@zonarsystems.net\"")
-        getSteps().sh("git checkout master")
-        getSteps().sh("git add .")
-        getSteps().sh("git commit -m \"${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})\"")
-        getSteps().sh("git push https://${getEnvironment().GIT_USERNAME}:${getEnvironment().GIT_PASSWORD}@github.com/${getSettings().githubOrg}/${getPipeline().repo} --all")
       }
     }
   }
@@ -393,30 +420,13 @@ class ApplicationPipeline implements Serializable {
     return res 
   }
 
-  @NonCPS
-  def isJobStartedByTimer(build) {
-    def startedByTimer = false
-    def buildCauses = build.rawBuild.getCauses()
-    for ( buildCause in buildCauses ) {
-      if (buildCause != null) {
-        def causeDescription = buildCause.getShortDescription()
-        if (causeDescription.contains("Started by timer")) {
-          startedByTimer = true
-        }
-      }
-    }
-
-    return startedByTimer
-  }
-
   def pipelineRun() {
     bailOnUninitialized();
 
     // no concurrent master or PR builds, as charts use cluster-unique resources.
     getSteps().properties(
       [
-        getSteps().disableConcurrentBuilds(),
-        getSteps().pipelineTriggers([getSteps().cron(getSettings().crontab)])
+        getSteps().disableConcurrentBuilds()
       ]
     )
 
@@ -449,75 +459,73 @@ class ApplicationPipeline implements Serializable {
 
           // Checkout source code, from PR or master
           pipelineCheckout()
+      
+          // Inside jenkins-gke tool container
+          getSteps().container('gke') { 
+            // pull kubeconfig from GKE and init helm
+            initKubeAndHelm()
 
-          // Prevent neverending build loop with bot checking in values.yaml and triggering another build
-          def commiterName = getSteps().sh(returnStdout: true, script: 'git show -s --pretty=%an').trim()
-          
-          // Alaways allow timer builds
-          def causedByTimer = isJobStartedByTimer(getScript().currentBuild)
-          
-          if (commiterName == getSettings().githubAdmin && causedByTimer == false) {
-            notifyMessage = 'Skipping bot repository merge ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
-          } else {
-            // Inside jenkins-gke tool container
-            getSteps().container('gke') { 
-              // pull kubeconfig from GKE and init helm
-              initKubeAndHelm()
+            // build docker containers and push them with current SHA tag and 'latest'
+            buildContainersWithTag(getScript().getGitSha())
+            pushContainersWithTag(getScript().getGitSha())
+            tagContainers(getScript().getGitSha(), 'latest')
+            pushContainersWithTag('latest')
+            
+            // update chart semver metadata
+            updateChartVersionMetadata(getScript().getGitSha())
 
-              // build docker containers and push them with current SHA tag
-              buildAndPushContainersWithTag(getScript().getGitSha())
+            // inject new tag into chart values.yaml
+            setDefaultValues(getScript().getGitSha())
 
-              // inject new docker tags into default values.yaml
-              setDefaultValues(getScript().getGitSha())
+            // if this is a Pull Request change
+            if (getEnvironment().CHANGE_ID) {
 
-              // update chart semver metadata
-              updateChartVersionMetadata(getScript().getGitSha())
+              // tag and push containers with staging tag
+              tagContainers(getScript().getGitSha(), STAGING_TAG)
+              pushContainersWithTag(STAGING_TAG)
 
-              // if this is a Pull Request change
-              if (getEnvironment().CHANGE_ID) {
+              // lint, and deploy charts to staging namespace 
+              // with overriden 
+              // and injected test values 
+              // without uploading to helm repo
+              lintHelmCharts()
 
-                // lint, and deploy charts to staging namespace 
-                // with injected docker tag values
-                // and injected test values 
-                // without uploading to helm repo
-                lintHelmCharts()
+              // lock on helm release name - this way we can avoid 
+              // port name collisions between concurrently running PR jobs
+              // test the deployed charts, destroy the deployments
+              smokeTestHelmCharts(
+                'staging', 
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+              )
 
-                // lock on helm release name - this way we can avoid 
-                // port name collisions between concurrently running PR jobs
-                getSteps().lock(getPipeline().helm) {
-                  // test the deployed charts, destroy the deployments
-                  smokeTestHelmCharts(
+              getSteps().lock(getPipeline().helm) {
+                if (getPipeline().deploy) {
+                  e2eTestHelmCharts(
                     'staging', 
-                    "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                    "${getPipeline().helm}-e2e"
                   )
+                }
+              }
+            } else {
+              // tag and push containers with staging tag
+              tagContainers(getScript().getGitSha(), PROD_TAG)
+              pushContainersWithTag(PROD_TAG)
 
-                  if (getPipeline().deploy) {
-                    e2eTestHelmCharts(
-                      'staging', 
-                      "${getPipeline().helm}-e2e"
+              // package and upload charts to helm repo
+              uploadChartsToRepo()
+
+              // if pipeline component is marked deployable,
+              // deploy it.
+              if (getPipeline().deploy) {
+                def chartsFolders = getScript().listFolders('./charts')
+                for (def i = 0; i < chartsFolders.size(); i++) {
+                  if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {                    
+                    upgradeHelmCharts(
+                      chartsFolders[i], 
+                      getScript().getGitSha()
                     )
                   }
-                }
-              } else {
-                // commit changes to Chart.yaml and values.yaml to github
-                pushChangesToGithub()
-
-                // package and upload charts to helm repo
-                uploadChartsToRepo()
-
-                // if pipeline component is marked deployable,
-                // deploy it.
-                if (getPipeline().deploy) {
-                  def chartsFolders = getScript().listFolders('./charts')
-                  for (def i = 0; i < chartsFolders.size(); i++) {
-                    if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {                    
-                      upgradeHelmCharts(
-                        chartsFolders[i], 
-                        getScript().getGitSha()
-                      )
-                    }
-                  }                
-                }
+                }                
               }
             }
           }
