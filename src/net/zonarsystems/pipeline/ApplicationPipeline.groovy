@@ -496,7 +496,7 @@ class ApplicationPipeline implements Serializable {
               // test the deployed charts, destroy the deployments
               smokeTestHelmCharts(
                 'staging', 
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
               )
 
               getSteps().lock(getPipeline().helm) {
