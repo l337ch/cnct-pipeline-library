@@ -15,7 +15,7 @@ node {
 	
 	dir ('unit_test') {
 		sh 'ls'
-		sh './gradlew test'
+		sh 'gradlew test'
 		junit 'build/test-results/TEST*.xml' 
 	}
 	stage 'integration testing'
