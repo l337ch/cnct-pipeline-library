@@ -11,14 +11,23 @@ def getLibrary() {
 }
 
 node {
-		
-	def lib = getLibrary()
 	
-	applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
-	  steps, 
-	  'pipelinelibrary', 
-	  this
-	)
-	applicationPipeline.init()
-	applicationPipeline.pipelineRun()
+	stage('unit testing') {
+		 dir 'unit_test'
+		 sh './gradlew.sh test'
+		 junit('build/test-results/TEST*.xml')
+	}
+	
+	stage('integration testing') {
+
+		def lib = getLibrary()
+		
+		applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
+		  steps, 
+		  'pipelinelibrary', 
+		  this
+		)
+		applicationPipeline.init()
+		applicationPipeline.pipelineRun()
+	}
 }
