@@ -105,14 +105,22 @@ class ApplicationPipeline implements Serializable {
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
       // update dependencies
       getSteps().sh 'helm repo update'
-      getSteps().retry(getSettings().maxRetry) { getSteps().sh upgradeString }
+      getSteps().retry(getSettings().maxRetry) {
+      	getSteps().sh upgradeString
+      }
     }
   }
 
   def initKubeAndHelm() {
     bailOnUninitialized()
 
-    getSteps().stage('Init kubectl and helm'){getSteps().sh"""gcloud container clusters get-credentials ${getEnvironment().GKE_CLUSTER_NAME}--zone ${getEnvironment().GKE_PRIMARY_ZONE}--project ${getEnvironment().GKE_PROJECT_NAME}kubectl cluster-info helm init"""}
+    getSteps().stage('Init kubectl and helm'){
+    getSteps().sh """
+	gcloud container clusters get-credentials ${getEnvironment().GKE_CLUSTER_NAME}--zone ${getEnvironment().GKE_PRIMARY_ZONE}--project ${getEnvironment().GKE_PROJECT_NAME}
+	kubectl cluster-info 
+	helm init
+	"""
+		}
   }
 
   def buildContainersWithTag(imageTag) {
@@ -260,8 +268,8 @@ class ApplicationPipeline implements Serializable {
   def uploadChartsToRepo() {
     bailOnUninitialized()
     if(getSteps().fileExists('./charts')){
-      getSteps().stage('Upload Helm chart(s)to helm repo'){
-        getSteps().retry(getSettings().maxRetry){
+      getSteps().stage('Upload Helm chart(s)to helm repo') {
+        getSteps().retry(getSettings().maxRetry) {
           getSteps().sh "gcloud auth activate-service-account ${getEnvironment().HELM_GKE_SERVICE_ACCOUNT} --key-file /etc/helm/service-account.json"
           chartMake('all -C charts')
           getSteps().sh "gcloud auth activate-service-account ${getEnvironment().MAIN_GKE_SERVICE_ACCOUNT} --key-file /etc/gke/service-account.json"
@@ -274,14 +282,14 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     getSteps().stage("Deploy Helm chart(s) to ${namespace} namespace") {
-      def chartName=getHelmChartName(path)
+      def chartName = getHelmChartName(path)
 
       // add repo (for requirements yaml charts) and pull dependencies
       getSteps().sh "helm repo add ${getSettings().githubOrg} ${getSettings().chartRepo}"
-      getSteps().sh"helm dependency update ${path}"
+      getSteps().sh "helm dependency update ${path}"
 
-      def commandString="helm install ${path} --name ${releaseName} --namespace ${namespace} --wait"
-      def testOverrides=getChartOverrides(getOverrides(),chartName,'staging')
+      def commandString = "helm install ${path} --name ${releaseName} --namespace ${namespace} --wait"
+      def testOverrides = getChartOverrides(getOverrides(),chartName,'staging')
       if(testOverrides) {
         commandString+=" --set ${testOverrides}"
       }
@@ -308,12 +316,14 @@ class ApplicationPipeline implements Serializable {
           try{
             if(getSteps().fileExists('./test/e2e')){
               // transform test dictionary into '--key=value' format
-              def e2eVars=getScript().getE2eVars{ e2e=getE2e() }
+              def e2eVars=getScript().getE2eVars{ 
+              	e2e = getE2e() 
+              }
 
               getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
             }
           } finally {
-            if(getSteps().fileExists('./test/e2e/junit_1.xml')){
+            if(getSteps().fileExists('./test/e2e/junit_1.xml')) {
               getSteps().junit('test/e2e/junit_*.xml')
             }
             deleteHelmRelease(releaseName)
@@ -327,19 +337,24 @@ class ApplicationPipeline implements Serializable {
   def smokeTestHelmCharts(namespace,releaseName) {
     bailOnUninitialized()
 
-    getSteps().stage('Determine if smoke testing necessary'){
-      def chartsFolders=getScript().listFolders('./charts')
-      for(def i=0;i<chartsFolders.size();i++){
-        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          if(getPipeline().smoketest){
-            def chartName=getHelmChartName(chartsFolders[i])
-            try{deployHelmChartsFromPath(chartsFolders[i],'staging',releaseName)
-              getSteps().stage("execute smoke tests"){
-                getSteps().retry(getSettings().maxRetry){
-                  def testStdout=getSteps().sh(returnStdout:true,script:"helm test ${releaseName} --cleanup")
-                  if(testStdout==~/(?s).*FAILED\:.*/){
-                    getSteps().error"Smoke test error: ${testStdout}"
-                  }
+    getSteps().stage ('Determine if smoke testing necessary') {
+      def chartsFolders = getScript().listFolders('./charts')
+      for (def i = 0; i < chartsFolders.size(); i++) {
+        if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+          if (getPipeline().smoketest) {  
+            def chartName = getHelmChartName(chartsFolders[i])
+            try {
+              deployHelmChartsFromPath(
+                chartsFolders[i],
+                'staging',
+                releaseName
+              )
+              getSteps().stage ("execute smoke tests") {
+                getSteps().retry(getSettings().maxRetry) {
+                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
+                  if (testStdout ==~ /(?s).*FAILED\:.*/) {
+                    getSteps().error "Smoke test error: ${testStdout}"
+                  } 
                 }
               }
             }
@@ -377,7 +392,7 @@ class ApplicationPipeline implements Serializable {
   def getHelmChartVersion(directory) {
     bailOnUninitialized()
 
-    def chartYaml=getScript().parseYaml{yaml=getSteps().readFile("${directory}/Chart.yaml")}
+    def chartYaml = getScript().parseYaml{yaml=getSteps().readFile("${directory}/Chart.yaml")}
 
     return chartYaml.version
   }
@@ -387,7 +402,7 @@ class ApplicationPipeline implements Serializable {
 
     getSteps().stage ('Increment chart(s)version(s)') {
       def chartsFolders=getScript().listFolders('./charts')
-      for(def i=0;i<chartsFolders.size();i++){
+      for(def i=0; i<chartsFolders.size(); i++){
 
         // read in Chart.yaml
         def chartYaml=getScript().parseYaml{yaml=getSteps().readFile("${chartsFolders[i]}/Chart.yaml")}
@@ -399,7 +414,9 @@ class ApplicationPipeline implements Serializable {
         chartYaml.version=verComponents.join('+')
 
         // dump YAML back
-        def changedYAML=getScript().toYaml{obj=chartYaml}
+        def changedYAML=getScript().toYaml{
+        	obj = chartYaml
+        }
 
         // write to file
         getSteps().writeFile(file:"${chartsFolders[i]}/Chart.yaml",text:changedYAML)}}
@@ -410,7 +427,7 @@ class ApplicationPipeline implements Serializable {
 
     getSteps().stage('Inject new docker tags into values.yaml'){
 
-      def chartsFolders=getScript().listFolders('./charts')
+      def chartsFolders = getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
         def reqYaml=getScript().parseYaml{
           yaml=getSteps().readFile("${chartsFolders[i]}/values.yaml")
@@ -420,13 +437,15 @@ class ApplicationPipeline implements Serializable {
         for(def k=0;k<dockerfileFolders.size();k++){
           def imageName=dockerfileFolders[k].split('/').last()
 
-          if(reqYaml.images&&reqYaml.images[imageName]){
+          if(reqYaml.images && reqYaml.images[imageName]) {
             // toString() is required, otherwise snakeyaml will serialize this into
             // something that is not a string.
             reqYaml.images[imageName]="${getSettings().dockerRegistry}/${imageName}:${useTag}".toString()}}
 
         // dump YAML back
-        def changedYAML=getScript().toYaml{obj=reqYaml}
+        def changedYAML=getScript().toYaml{
+        obj=reqYaml
+       }
 
         // write to file
         getSteps().writeFile(file:"${chartsFolders[i]}/values.yaml",text:changedYAML)}}
@@ -438,11 +457,26 @@ class ApplicationPipeline implements Serializable {
       getSteps().containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac}${computer.name}'),
     ],volumes:[]){
       getSteps().node("env-${application}"){
-        this.settings=getFileLoader().fromGit('settings','https://github.com/samsung-cnct/zonar-pipeline.git','master','repo-scan-access','').getConfig()
+        this.settings=getFileLoader().fromGit(
+        'settings',
+        'https://github.com/samsung-cnct/zonar-pipeline.git',
+        'master',
+        'repo-scan-access',
+        ''
+      ).getConfig()
 
-        def pipelineConfig=getFileLoader().fromGit('pipeline',"https://github.com/samsung-cnct/zonar-pipeline.git",'master',"repo-scan-access",'').getConfig()
+      def pipelineConfig = getFileLoader().fromGit(
+        'pipeline',"https://github.com/samsung-cnct/zonar-pipeline.git",
+        'master',
+        "repo-scan-access",
+        ''
+       ).getConfig()
 
-        this.pipeline=pipelineConfig this.helpers=new PipelineHelpers(this.steps,this.settings,pipelineConfig)this.uniqueJenkinsId=getEnvironment().UNIQUE_JENKINS_ID}}
+        this.pipeline=pipelineConfig 
+        this.helpers=new PipelineHelpers(this.steps,this.settings,pipelineConfig)
+        this.uniqueJenkinsId = getEnvironment().UNIQUE_JENKINS_ID
+        }
+       }
 
     // set ready
     ready=true
@@ -452,10 +486,15 @@ class ApplicationPipeline implements Serializable {
   def getChartOverrides(allOverrides,chart,type) {
     def res=null
 
-    if(allOverrides){def chartOverrides=allOverrides.get(chart)
-      if(chartOverrides){def chartTypeOverrides=chartOverrides.get(type)
-        if(chartTypeOverrides){res=chartTypeOverrides.inject([]){ result,entry->
-            result<<"${entry.key}=${entry.value.toString()}"}.join(',')
+    if(allOverrides) {
+    def chartOverrides=allOverrides.get(chart)
+      if(chartOverrides){
+      	def chartTypeOverrides=chartOverrides.get(type)
+        if(chartTypeOverrides){
+        res=chartTypeOverrides.inject([]){ 
+        	result,entry->
+            result<<"${entry.key}=${entry.value.toString()}"
+          }.join(',')
         }
       }
 
@@ -474,9 +513,12 @@ class ApplicationPipeline implements Serializable {
 
     // no concurrent master or PR builds, as charts use cluster-unique
     // resources.
-    getSteps().properties([
-      getSteps().disableConcurrentBuilds()
-    ])
+   getSteps().properties(
+      [
+        getSteps().disableConcurrentBuilds(),
+        getSteps().pipelineTriggers([getSteps().cron(getSettings().crontab)])
+      ]
+    )
 
     getSteps().podTemplate(label:"CI-${application}",containers:[
       getSteps().containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine',args:'${computer.jnlpmac}${computer.name}'),
@@ -533,11 +575,20 @@ class ApplicationPipeline implements Serializable {
               // lock on helm release name - this way we can avoid
               // port name collisions between concurrently running PR jobs
               // test the deployed charts, destroy the deployments
-              smokeTestHelmCharts('staging',"${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}")
+              smokeTestHelmCharts(
+                'staging', 
+                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
+              )
 
-              getSteps().lock(getPipeline().helm){if(getPipeline().deploy){e2eTestHelmCharts('staging',"${getPipeline().helm}-e2e")}}}else{
+              getSteps().lock(getPipeline().helm){
+              if(getPipeline().deploy){
+              	e2eTestHelmCharts('staging',"${getPipeline().helm}-e2e")
+              	}
+              	}
+              	} else {
               // tag and push containers with staging tag
-              tagContainers(getScript().getGitSha(),PROD_TAG)pushContainersWithTag(PROD_TAG)
+              tagContainers(getScript().getGitSha(),PROD_TAG)
+              pushContainersWithTag(PROD_TAG)
 
               // package and upload charts to helm repo
               uploadChartsToRepo()
@@ -545,7 +596,8 @@ class ApplicationPipeline implements Serializable {
               // if pipeline component is marked deployable,
               // deploy it.
               if(getPipeline().deploy){def chartsFolders=getScript().listFolders('./charts')
-                for(def i=0;i<chartsFolders.size();i++){if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
+                for(def i=0;i<chartsFolders.size();i++){
+                if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
                     upgradeHelmCharts(chartsFolders[i],getScript().getGitSha())
                   }
                 }
@@ -554,9 +606,9 @@ class ApplicationPipeline implements Serializable {
           }
         } catch(e){
           getScript().currentBuild.result='FAILURE'
-          notifyMessage='Build failed for '+"${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL}) : ${e.getMessage()}"
-          notifyColor='danger'
-          err=e
+          notifyMessage = 'Build failed for '+"${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL}) : ${e.getMessage()}"
+          notifyColor = 'danger'
+          err = e
         }
         finally{
           getSteps().stage('Notify'){
