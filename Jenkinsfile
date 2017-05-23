@@ -13,7 +13,7 @@ def getLibrary() {
 node {
 	stage 'unit testing'
 	
-	dir ('unit_test') {
+	dir ('zonar-pipeline-library/unit_test') {
 		sh 'ls'
 		sh 'gradlew test'
 		junit 'build/test-results/TEST*.xml' 
