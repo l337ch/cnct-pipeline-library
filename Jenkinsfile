@@ -12,8 +12,9 @@ def getLibrary() {
 
 node() {
 	
+	dir 'unit_test'
 	stage('unit testing') {
-		 dir 'unit_test'
+		 
 		 sh './gradlew test'
 		 junit('build/test-results/TEST*.xml')
 	}
