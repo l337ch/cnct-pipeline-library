@@ -255,7 +255,8 @@ class ApplicationPipeline implements Serializable {
           }
         }
       }
-      return packageVersionList;}
+      return packageVersionList
+    }
   }
 
   def lintHelmCharts() {
@@ -540,7 +541,17 @@ class ApplicationPipeline implements Serializable {
 
           if(isJobStartedByTimer(build)){
             // check for new zonar release
-            getSteps().container('gke'){if(!isNewZonarReleaseAvailable()){return;}}}
+            getSteps().container('gke'){
+              if(!isNewZonarReleaseAvailable()){
+                getSteps().stage('Notify'){
+                  notifyMessage = 'No new zonar releases detected - exiting timer build'
+                  getHelpers().sendSlack(
+                      getPipeline().slack,notifyMessage,notifyColor)
+                }
+                return;
+              }
+            }
+          }
 
           // Checkout source code, from PR or master
           pipelineCheckout()
