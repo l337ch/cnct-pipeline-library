@@ -34,7 +34,7 @@ def githubPRCheckout(prId) {
 node {
 
 	stage 'checkout'
-	githubPRCheckout(getEnvironment().CHANGE_ID)
+	githubPRCheckout(env.CHANGE_ID)
       
 	stage 'unit testing'
 	
