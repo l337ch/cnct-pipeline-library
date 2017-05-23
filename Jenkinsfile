@@ -10,7 +10,32 @@ def getLibrary() {
 	}
 }
 
+def githubPRCheckout(prId) {
+    checkout(
+      [
+        $class: 'GitSCM', 
+        branches: [
+          [name: "origin/pr/${prId}"]
+        ], 
+        doGenerateSubmoduleConfigurations: false, 
+        extensions: [], 
+        submoduleCfg: [], 
+        userRemoteConfigs: [
+          [
+            credentialsId: settings.githubScanCredentials, 
+            refspec: "+refs/pull/*/head:refs/remotes/origin/pr/*", 
+            url: "https://github.com/samsung-cnct/zonar-pipeline-library"
+          ]
+        ]
+      ]
+    )
+  }
+
 node {
+
+	stage 'checkout'
+	githubPRCheckout(getEnvironment().CHANGE_ID)
+      
 	stage 'unit testing'
 	
 	dir ('zonar-pipeline-library/unit_test') {
