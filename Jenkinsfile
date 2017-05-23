@@ -11,7 +11,7 @@ def getLibrary() {
 }
 
 node {
-	stage 'unit testing'
+
 	dir 'unit_test'
 	sh 'ls'
 	sh './gradlew test'
