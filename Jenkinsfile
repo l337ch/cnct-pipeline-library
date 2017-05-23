@@ -22,7 +22,7 @@ def githubPRCheckout(prId) {
         submoduleCfg: [], 
         userRemoteConfigs: [
           [
-            credentialsId: 'repo-scan-acces', 
+            credentialsId: 'repo-scan-access', 
             refspec: "+refs/pull/*/head:refs/remotes/origin/pr/*", 
             url: "https://github.com/samsung-cnct/zonar-pipeline-library"
           ]
