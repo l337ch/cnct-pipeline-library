@@ -35,10 +35,10 @@ node {
 
 	stage 'checkout'
 	githubPRCheckout(env.CHANGE_ID)
-      
 	stage 'unit testing'
 	
-	dir ('zonar-pipeline-library/unit_test') {
+	dir ('./zonar-pipeline-library/unit_test') {
+		sh 'pwd'
 		sh 'ls'
 		sh './gradlew test'
 		junit 'build/test-results/TEST*.xml' 
