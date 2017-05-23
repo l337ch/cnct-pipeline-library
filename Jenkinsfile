@@ -13,7 +13,13 @@ def getLibrary() {
 node {
 
 
-	
+	stage 'unit testing'
+	dir 'unit_test'
+	steps {
+		sh 'ls'
+		sh './gradlew test'
+		junit 'build/test-results/TEST*.xml' 
+	}
 	stage 'integration testing'
 
 	def lib = getLibrary()
