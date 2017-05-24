@@ -1,15 +1,19 @@
 @Library('pipeline')
 import net.zonarsystems.pipeline.ApplicationPipeline
 
-def loadLibrary(steps) {
-	applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
-	  steps, 
-	  'pipelinelibrary', 
-	  this
-	)
-	
-	//applicationPipeline.init()
-	//applicationPipeline.pipelineRun()
+def loadLibrary() {
+
+
+				applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
+				  node() {sh "unit test"}, 
+				  'pipelinelibrary', 
+				  this
+				)
+				
+				return applicationPipeline
+		
+
+
 }
 
 def execute() {

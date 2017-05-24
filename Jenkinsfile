@@ -33,8 +33,8 @@ def githubPRCheckout(prId) {
 
 node {
 
-	stage 'checkout'
-	githubPRCheckout(env.CHANGE_ID)
+	//stage 'checkout'
+	//githubPRCheckout(env.CHANGE_ID)
 	stage 'unit testing'
 	
 	dir ('./unit_test') {

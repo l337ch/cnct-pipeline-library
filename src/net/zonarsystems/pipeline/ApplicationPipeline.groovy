@@ -44,7 +44,11 @@ class ApplicationPipeline implements Serializable {
   }
 
   ApplicationPipeline(steps,application,script,overrides=[:],e2e=[:]){
-    this.steps=steps this.application=application this.script=script this.e2e=e2e this.overrides=overrides
+    this.steps=steps 
+    this.application=application 
+    this.script=script 
+    this.e2e=e2e 
+    this.overrides=overrides
   }
 
   @NonCPS
@@ -191,7 +195,7 @@ class ApplicationPipeline implements Serializable {
   }
 
   def checkImageForNewPackageVersion(dockerImage, packageName) {
-    bailOnUninitialized()
+    //bailOnUninitialized()
     getSteps().stage ('Checking for newer version for package ${packageName} in image ${dockerImage}') {
       //use yum to check the installed and available version
       def currentVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list installed ${packageName} | awk 'END {print \$2 }'"
