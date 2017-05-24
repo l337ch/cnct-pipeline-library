@@ -89,8 +89,13 @@ class ApplicationPipelineTest extends BasePipelineTestCPS {
 		
 		  
 		try {
+      def dockerImage = 'gcr.io/sds-readiness/ac:d4a29d3834d9639362c1f69b364377c553788f01'
+      def packageName = 'admin-console'
+      
 			def script = loadScript("src/test/jenkins/testCheckImage.jenkins")
-			script.loadLibrary(script)
+			def applicationPipeline = script.loadLibrary()
+      //applicationPipeline.init()
+      //applicationPipeline.checkImageForNewPackageVersion(dockerImage, packageName)
 			printCallStack()
 		} catch (e) {
 			e.printStackTrace()
