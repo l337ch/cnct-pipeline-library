@@ -51,15 +51,15 @@ podTemplate(label:"CI-${application}",containers:[
 			
 			stage('integration testing') {
 				container('jnlp') {
-				def lib = getLibrary()
-				
-				applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
-				  steps, 
-				  'pipelinelibrary', 
-				  this
-				)
-				applicationPipeline.init()
-				applicationPipeline.pipelineRun()
+					def lib = getLibrary()
+					
+					applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
+					  steps, 
+					  'pipelinelibrary', 
+					  this
+					)
+					applicationPipeline.init()
+					applicationPipeline.pipelineRun()
 				}
 			}
 			
