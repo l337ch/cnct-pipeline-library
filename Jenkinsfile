@@ -40,7 +40,7 @@ node {
 	dir ('./unit_test') {
 		sh 'pwd'
 		sh 'ls'
-		sh './gradlew test'
+		sh './gradlew test --debug'
 		junit 'build/test-results/TEST*.xml' 
 	}
 	stage 'integration testing'
