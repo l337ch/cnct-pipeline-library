@@ -99,7 +99,7 @@ class ApplicationPipelineTest extends BasePipelineTestCPS {
 			printCallStack()
 		} catch (e) {
 			e.printStackTrace()
-			exception = true
+			//exception = true
 		}
 		assertThat(exception).isEqualTo(expectedException)
 
