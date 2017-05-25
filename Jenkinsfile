@@ -41,7 +41,7 @@ node {
 		sh 'pwd'
 		sh 'ls'
 		sh './gradlew test --debug'
-		junit 'build/test-results/TEST*.xml' 
+		//junit 'build/test-results/TEST*.xml' 
 	}
 	stage 'integration testing'
 
