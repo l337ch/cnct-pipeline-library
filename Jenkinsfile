@@ -2,7 +2,7 @@
 def getLibrary() {
   podTemplate(
     label: 'lib-init', 
-    containers: [getSteps().containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
+    containers: [containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
     volumes: []) {
     getSteps().node ('lib-init') {
       if (env.CHANGE_ID) {
