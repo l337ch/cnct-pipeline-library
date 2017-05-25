@@ -44,7 +44,7 @@ node {
 		sh './gradlew test --debug'
 		//junit 'build/test-results/TEST*.xml' 
 	}*/
-	stage 'integration testing'
+	//stage 'integration testing'
 
 	def lib = getLibrary()
 	
