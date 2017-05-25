@@ -5,17 +5,18 @@ def getLibrary() {
     containers: [containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
     volumes: []) {
     node ('lib-init') {
+    /*
       if (env.CHANGE_ID) {
         print "testing library PR ${env.CHANGE_ID}"
         return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
-      } else {
+      } else {*/
         print 'Testing library on master'
         return library('pipeline')
-      }
+      //}
     }
   }
 }
-def lib = getLibrary()
+def lib = library('pipeline')
 applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
   steps, 
   'pipelinelibrary', 
