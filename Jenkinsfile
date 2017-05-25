@@ -16,7 +16,7 @@ def getLibrary() {
     }
   }
 }
-def lib = library('pipeline')
+def lib = getLibrary()
 applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
   steps, 
   'pipelinelibrary', 
