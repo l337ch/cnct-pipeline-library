@@ -4,13 +4,13 @@ import net.zonarsystems.pipeline.ApplicationPipeline
 def loadLibrary() {
 
 
-				applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
-				  node() {sh "unit test"}, 
-				  'pipelinelibrary', 
-				  this
-				)
-				
-				return applicationPipeline
+	applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
+	  node() {sh "unit test"}, 
+	  'pipelinelibrary', 
+	  this
+	)
+	
+	return applicationPipeline
 		
 
 
