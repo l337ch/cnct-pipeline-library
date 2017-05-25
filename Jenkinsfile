@@ -32,28 +32,37 @@ def githubPRCheckout(prId) {
   }
 
 
-
-	//stage 'checkout'
-	/*
-	githubPRCheckout(env.CHANGE_ID)
-	stage 'unit testing'
-	
-	dir ('./unit_test') {
-		sh 'pwd'
-		sh 'ls'
-		sh './gradlew test --debug'
-		//junit 'build/test-results/TEST*.xml' 
-	}*/
-	
-	//stage 'integration testing'
-
-	def lib = getLibrary()
-	
-	applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
-	  steps, 
-	  'pipelinelibrary', 
-	  this
-	)
-	applicationPipeline.init()
-	applicationPipeline.pipelineRun()
+podTemplate(label:"CI-${application}",containers:[
+      getSteps().containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine',args:'${computer.jnlpmac}${computer.name}'),
+      getSteps().containerTemplate(name:'gke',image:"${getSettings().dockerRegistry}/jenkins-gke:latest",ttyEnabled:true,command:'cat',alwaysPullImage:true),
+    ]) {
+    	node {
+			//stage 'checkout'
+			/*
+			githubPRCheckout(env.CHANGE_ID)
+			stage 'unit testing'
+			
+			dir ('./unit_test') {
+				sh 'pwd'
+				sh 'ls'
+				sh './gradlew test --debug'
+				//junit 'build/test-results/TEST*.xml' 
+			}*/
+			
+			stage('integration testing') {
+				container('jnlp') {
+				def lib = getLibrary()
+				
+				applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
+				  steps, 
+				  'pipelinelibrary', 
+				  this
+				)
+				applicationPipeline.init()
+				applicationPipeline.pipelineRun()
+				}
+			}
+			
+		}
+}
 
