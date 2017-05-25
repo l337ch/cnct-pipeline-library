@@ -32,11 +32,11 @@ def githubPRCheckout(prId) {
   }
 
 
-podTemplate(label:"kubernetes-707cab7919c64786ba670f99cfeeb1d2",containers:[
+podTemplate(label:"lib-ci",containers:[
       containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine',args:'${computer.jnlpmac}${computer.name}'),
       containerTemplate(name:'gke',image:"gcr.io/jenkins-gke:latest",ttyEnabled:true,command:'cat',alwaysPullImage:true),
     ]) {
-    	node("kubernetes-707cab7919c64786ba670f99cfeeb1d2") {
+    	node {
 			//stage 'checkout'
 			/*
 			githubPRCheckout(env.CHANGE_ID)
