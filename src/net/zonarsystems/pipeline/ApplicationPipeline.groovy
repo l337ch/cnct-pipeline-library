@@ -545,19 +545,21 @@ class ApplicationPipeline implements Serializable {
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
 
-          if(isJobStartedByTimer(build)){
-            // check for new zonar release
-            getSteps().container('gke'){
-              if(!isNewZonarReleaseAvailable()){
-                getSteps().stage('Notify'){
-                  notifyMessage = 'No new zonar releases detected - exiting timer build'
-                  getHelpers().sendSlack(
-                      getPipeline().slack,notifyMessage,notifyColor)
-                }
-                return;
+        if(isJobStartedByTimer(build)){
+          // check for new zonar release
+          getSteps().container('gke'){
+            if(!isNewZonarReleaseAvailable()){
+              getSteps().stage('Notify'){
+                notifyMessage = 'No new zonar releases detected - exiting timer build'
+                getHelpers().sendSlack(
+                    getPipeline().slack,notifyMessage,notifyColor)
               }
+              return;
             }
           }
+        }
+ 
+        try {
 
           // Checkout source code, from PR or master
           pipelineCheckout()
