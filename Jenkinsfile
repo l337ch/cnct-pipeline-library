@@ -31,7 +31,7 @@ def githubPRCheckout(prId) {
     )
   }
 
-node('library-CI') {
+
 
 	//stage 'checkout'
 	/*
@@ -57,4 +57,3 @@ node('library-CI') {
 	applicationPipeline.init()
 	applicationPipeline.pipelineRun()
 
-}
