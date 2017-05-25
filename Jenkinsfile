@@ -37,17 +37,7 @@ podTemplate(label:"CI-pipeline",containers:[
       getSteps().containerTemplate(name:'gke',image:"${getSettings().dockerRegistry}/jenkins-gke:latest",ttyEnabled:true,command:'cat',alwaysPullImage:true),
     ]) {
     	node {
-			//stage 'checkout'
-			/*
-			githubPRCheckout(env.CHANGE_ID)
-			stage 'unit testing'
-			
-			dir ('./unit_test') {
-				sh 'pwd'
-				sh 'ls'
-				sh './gradlew test --debug'
-				//junit 'build/test-results/TEST*.xml' 
-			}*/
+
 			
 			stage('integration testing') {
 				container('jnlp') {
