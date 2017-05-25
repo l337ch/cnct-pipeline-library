@@ -545,7 +545,7 @@ class ApplicationPipeline implements Serializable {
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
 
-        if(isJobStartedByTimer(Thread.currentThread().executable)) {
+        if(isJobStartedByTimer(getScript().currentBuild)) {
           // check for new zonar release
           getSteps().container('gke'){
             if(!isNewZonarReleaseAvailable()){
