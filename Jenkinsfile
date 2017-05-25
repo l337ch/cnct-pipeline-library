@@ -32,11 +32,11 @@ def githubPRCheckout(prId) {
   }
 
 
-podTemplate(label:"CI-pipeline",containers:[
+podTemplate(label:"CI-pipeline-lib",containers:[
       containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine',args:'${computer.jnlpmac}${computer.name}'),
       containerTemplate(name:'gke',image:"gcr.io/jenkins-gke:latest",ttyEnabled:true,command:'cat',alwaysPullImage:true),
     ]) {
-    	//node {
+    	node("CI-pipeline-lib") {
 			//stage 'checkout'
 			/*
 			githubPRCheckout(env.CHANGE_ID)
@@ -63,6 +63,6 @@ podTemplate(label:"CI-pipeline",containers:[
 				}
 			}
 			
-		//}
+		}
 }
 
