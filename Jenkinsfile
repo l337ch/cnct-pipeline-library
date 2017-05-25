@@ -8,7 +8,7 @@ def getLibrary() {
     
       if (env.CHANGE_ID) {
         print "testing library PR ${env.CHANGE_ID}"
-        return library("pipeline@refs/remotes/origin/pr/142")
+        return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
       } else {
         print 'Testing library on master'
         return library('pipeline')
