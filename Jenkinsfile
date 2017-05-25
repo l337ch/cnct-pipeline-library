@@ -41,7 +41,7 @@ podTemplate(label:"CI-pipeline",containers:[
 			
 			stage('integration testing') {
 				container('jnlp') {
-					def lib = getLibrary()
+					//def lib = getLibrary()
 					
 					
 				}
