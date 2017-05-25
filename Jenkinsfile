@@ -33,19 +33,6 @@ def githubPRCheckout(prId) {
 
 node {
 
-	//stage 'checkout'
-	/*
-	githubPRCheckout(env.CHANGE_ID)
-	stage 'unit testing'
-	
-	dir ('./unit_test') {
-		sh 'pwd'
-		sh 'ls'
-		sh './gradlew test --debug'
-		//junit 'build/test-results/TEST*.xml' 
-	}*/
-	
-	stage 'integration testing'
 
 	def lib = getLibrary()
 	
