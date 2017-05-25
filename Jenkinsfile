@@ -4,7 +4,7 @@ def getLibrary() {
     label: 'lib-init', 
     containers: [containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
     volumes: []) {
-    getSteps().node ('lib-init') {
+    node ('lib-init') {
       if (env.CHANGE_ID) {
         print "testing library PR ${env.CHANGE_ID}"
         return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
