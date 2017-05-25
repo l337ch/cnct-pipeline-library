@@ -93,7 +93,7 @@ class ApplicationPipelineTest extends BasePipelineTestCPS {
       def packageName = 'admin-console'
       
 			def script = loadScript("src/test/jenkins/testCheckImage.jenkins")
-			def applicationPipeline = script.loadLibrary()
+			//def applicationPipeline = script.loadLibrary()
       //applicationPipeline.init()
       //applicationPipeline.checkImageForNewPackageVersion(dockerImage, packageName)
 			printCallStack()
