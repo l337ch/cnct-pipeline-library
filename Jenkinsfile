@@ -32,7 +32,7 @@ def githubPRCheckout(prId) {
   }
 
 
-podTemplate(label:"CI-${application}",containers:[
+podTemplate(label:"CI-pipeline",containers:[
       getSteps().containerTemplate(name:'jnlp',image:'jenkinsci/jnlp-slave:2.62-alpine',args:'${computer.jnlpmac}${computer.name}'),
       getSteps().containerTemplate(name:'gke',image:"${getSettings().dockerRegistry}/jenkins-gke:latest",ttyEnabled:true,command:'cat',alwaysPullImage:true),
     ]) {
@@ -53,13 +53,7 @@ podTemplate(label:"CI-${application}",containers:[
 				container('jnlp') {
 					def lib = getLibrary()
 					
-					applicationPipeline = lib.net.zonarsystems.pipeline.ApplicationPipeline.new(
-					  steps, 
-					  'pipelinelibrary', 
-					  this
-					)
-					applicationPipeline.init()
-					applicationPipeline.pipelineRun()
+					
 				}
 			}
 			
