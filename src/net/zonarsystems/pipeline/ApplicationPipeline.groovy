@@ -27,12 +27,26 @@ class ApplicationPipeline implements Serializable {
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:]) {
+  ApplicationPipeline(steps,application,script,overrides=[:],e2e=[:]){
     this.steps = steps
     this.application = application
     this.script = script
     this.e2e = e2e
     this.overrides = overrides
+  }
+
+  @NonCPS
+  def isJobStartedByTimer(build) {
+    def buildCauses = build.rawBuild.getCauses()
+    for ( buildCause in buildCauses ) {
+      if (buildCause != null) {
+        def causeDescription = buildCause.getShortDescription()
+        if (causeDescription.contains("Started by timer")) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   def pipelineCheckout() {
@@ -161,6 +175,75 @@ class ApplicationPipeline implements Serializable {
           getSteps().sh "gcloud docker -- tag ${getSettings().dockerRegistry}/${imageName}:${currentTag} ${getSettings().dockerRegistry}/${imageName}:${newTag}"
         }
       }
+    }
+  }
+
+  def checkImageForNewPackageVersion(dockerImage, packageName) {
+    //bailOnUninitialized()
+    getSteps().stage ('Checking for newer version for package ${packageName} in image ${dockerImage}') {
+      //use yum to check the installed and available version
+      def currentVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list installed ${packageName} | awk 'END {print \$2 }'"
+      def availableVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list available ${packageName} | awk 'END {print \$2 }'"
+
+      if (currentVersion != availableVersion) {
+        getSteps().echo "${packageName} has newer version available: ${availableVersion}"
+        return true
+      }
+      return false
+
+    }
+  }
+
+  def isNewZonarReleaseAvailable() {
+    getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
+      def chartsFolders=getScript().listFolders('./charts')
+      for(def i=0;i<chartsFolders.size();i++){
+        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
+          var chartImages=getHelmChartValue(chartsFolders[i],"images")
+          var zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+          for(image in chartImages){
+            if(image.key!="pullPolicy"){
+              def imagePackages=zonarPackages.get(image.key)
+              for(zonarPackage in imagePackages){
+                if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
+                  return true
+                }
+              }
+            }
+
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns the zonar application versions as a helm chart overridable list
+   * 
+   * @return a comma deliminated list of chart version proiperties
+   */
+  def getZonarAppVersionOverrides() {
+    getSteps().stage('Getting Zonar package versions'){
+      def chartsFolders=getScript().listFolders('./charts')
+      def packageVersions=[:]
+      for(def i=0;i<chartsFolders.size();i++){
+        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
+          var chartImages=getHelmChartValue(chartsFolders[i],"images")
+          var zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+
+          for(image in chartImages){if(image.key!="pullPolicy"){
+              def imagePackages=zonarPackages.get(image.key);
+              for(zonarPackage in imagePackages){
+                def appVersion=getSteps().sh "docker run -it ${image.value} -- yum list installed ${zonarPackage.key} | awk 'END {print \$2 }'"
+                packageVersions["zonar_apps.${image.key}.${zonarPackage.key}"]=appVersion
+
+              }
+            }
+
+          }
+        }
+      }
+      return packageVersionList
     }
   }
 
@@ -415,6 +498,12 @@ class ApplicationPipeline implements Serializable {
           }.join(',')
         }
       }
+
+      def zonarVersionOverrides=getZonarAppVersionOverrides()
+      if(zonarVersionOverrides){res=res+zonarVersionOverrides.inject([]){ result,entry->
+          result<<"${entry.key}=${entry.value.toString()}"}.join(',')
+      }
+
     }
 
     return res 
@@ -456,6 +545,20 @@ class ApplicationPipeline implements Serializable {
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
 
+        if(isJobStartedByTimer(getScript().currentBuild)) {
+          // check for new zonar release
+          getSteps().container('gke'){
+            if(!isNewZonarReleaseAvailable()){
+              getSteps().stage('Notify'){
+                notifyMessage = 'No new zonar releases detected - exiting timer build'
+                getHelpers().sendSlack(
+                    getPipeline().slack,notifyMessage,notifyColor)
+              }
+              return;
+            }
+          }
+        }
+ 
         try {
 
           // Checkout source code, from PR or master
@@ -496,7 +599,7 @@ class ApplicationPipeline implements Serializable {
               // test the deployed charts, destroy the deployments
               smokeTestHelmCharts(
                 'staging', 
-                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
+                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
               )
 
               getSteps().lock(getPipeline().helm) {
@@ -526,7 +629,7 @@ class ApplicationPipeline implements Serializable {
                       getScript().getGitSha()
                     )
                   }
-                }                
+                }
               }
             }
           }

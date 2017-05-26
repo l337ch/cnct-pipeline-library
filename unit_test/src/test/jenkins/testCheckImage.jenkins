@@ -1,0 +1,27 @@
+@Library('pipeline')
+import net.zonarsystems.pipeline.ApplicationPipeline
+
+
+def loadLibrary() {
+	applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
+	  node() {sh "unit test"}, 
+	  'pipelinelibrary', 
+	  this
+	)
+	
+	return applicationPipeline
+		
+
+
+}
+
+def execute() {
+	node() {
+    	stage('testing') {
+
+    	}
+    }
+}
+
+
+return this
