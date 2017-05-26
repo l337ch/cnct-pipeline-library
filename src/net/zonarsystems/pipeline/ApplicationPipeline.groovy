@@ -27,7 +27,7 @@ class ApplicationPipeline implements Serializable {
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps,application,script,overrides=[:],e2e=[:]){
+  ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:]) {
     this.steps = steps
     this.application = application
     this.script = script
@@ -599,7 +599,7 @@ class ApplicationPipeline implements Serializable {
               // test the deployed charts, destroy the deployments
               smokeTestHelmCharts(
                 'staging', 
-                "${getPipeline().helm}-${getEnvironment().BUILD_NUMBER}"
+                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
               )
 
               getSteps().lock(getPipeline().helm) {
