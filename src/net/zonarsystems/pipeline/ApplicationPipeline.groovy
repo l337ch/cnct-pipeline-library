@@ -384,6 +384,16 @@ class ApplicationPipeline implements Serializable {
 
     return chartYaml.version
   }
+  
+  def getHelmChartValue(directory, value) {
+    bailOnUninitialized()
+
+    def chartYaml = getScript().parseYaml {
+      yaml = getSteps().readFile("${directory}/Chart.yaml")
+    }
+
+    return chartYaml[value]
+  }
 
   def updateChartVersionMetadata(sha) {
     bailOnUninitialized()
