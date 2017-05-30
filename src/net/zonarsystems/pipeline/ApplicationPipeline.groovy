@@ -182,8 +182,9 @@ class ApplicationPipeline implements Serializable {
     //bailOnUninitialized()
     getSteps().stage ("Checking for newer version for package ${packageName} in image ${dockerImage}") {
       //use yum to check the installed and available version
-      def currentVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list installed ${packageName} | awk 'END {print \$2 }'"
-      def availableVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list available ${packageName} | awk 'END {print \$2 }'"
+      getSteps().echo "docker run -it ${dockerImage} -- yum list installed ${packageName} | awk \'END {print \$2 }\'"
+      def currentVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list installed ${packageName} | awk \'END {print \$2 }\'"
+      def availableVersion = getSteps().sh "docker run -it ${dockerImage} -- yum list available ${packageName} | awk \'END {print \$2 }\'"
       getSteps().echo "${packageName} is at ${currentVersion} latest=${availableVersion}"
       if (currentVersion != availableVersion) {
         getSteps().echo "${packageName} has newer version available: ${availableVersion}"
