@@ -228,10 +228,11 @@ class ApplicationPipeline implements Serializable {
       def packageVersions=[:]
       for(def i=0;i<chartsFolders.size();i++){
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          var chartImages=getHelmChartValue(chartsFolders[i],"images")
-          var zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+          def chartImages=getHelmChartValue(chartsFolders[i],"images")
+          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
 
-          for(image in chartImages){if(image.key!="pullPolicy"){
+          for(image in chartImages){
+            if(image.key!="pullPolicy"){
               def imagePackages=zonarPackages.get(image.key);
               for(zonarPackage in imagePackages){
                 def appVersion=getSteps().sh "docker run -it ${image.value} -- yum list installed ${zonarPackage.key} | awk 'END {print \$2 }'"
