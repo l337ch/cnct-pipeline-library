@@ -564,27 +564,30 @@ class ApplicationPipeline implements Serializable {
 
           // Checkout source code, from PR or master
           pipelineCheckout()
-          def isNewReleaseAvailable = isNewZonarReleaseAvailable()
           
-          if(isJobStartedByTimer(getScript().currentBuild)) {
-            // check for new zonar release
-              if(!isNewReleaseAvailable){
-                getSteps().echo "No new packages available - stopping execution"
-                getSteps().stage('Notify'){
-                  notifyMessage = 'No new packages available - exiting timer build'
-                  getHelpers().sendSlack(
-                      getPipeline().slack,notifyMessage,notifyColor)
-                }
-                getScript().currentBuild.result = 'SUCCESS'
-                getSteps().sh "exit 0"
-                return;
-              } else {
-                getSteps().echo "New package(s) available - executing pipeline"
-              }
-          }
       
           // Inside jenkins-gke tool container
-          getSteps().container('gke') { 
+          getSteps().container('gke') {
+            
+            def isNewReleaseAvailable = isNewZonarReleaseAvailable()
+            
+            if(isJobStartedByTimer(getScript().currentBuild)) {
+              // check for new zonar release
+                if(!isNewReleaseAvailable){
+                  getSteps().echo "No new packages available - stopping execution"
+                  getSteps().stage('Notify'){
+                    notifyMessage = 'No new packages available - exiting timer build'
+                    getHelpers().sendSlack(
+                        getPipeline().slack,notifyMessage,notifyColor)
+                  }
+                  getScript().currentBuild.result = 'SUCCESS'
+                  getSteps().sh "exit 0"
+                  return;
+                } else {
+                  getSteps().echo "New package(s) available - executing pipeline"
+                }
+            }
+             
             // pull kubeconfig from GKE and init helm
             initKubeAndHelm()
 
