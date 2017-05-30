@@ -558,8 +558,8 @@ class ApplicationPipeline implements Serializable {
         if(isJobStartedByTimer(getScript().currentBuild)) {
           // check for new zonar release
           getSteps().container('gke'){
-            if(!isNewZonarReleaseAvailable){
-              getSteps().echo "No new package(s) available - stopping execution"
+            if(!isNewReleaseAvailable){
+              getSteps().echo "No new packages available - stopping execution"
               getSteps().stage('Notify'){
                 notifyMessage = 'No new zonar releases detected - exiting timer build'
                 getHelpers().sendSlack(
