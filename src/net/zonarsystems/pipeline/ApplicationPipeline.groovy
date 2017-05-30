@@ -198,13 +198,17 @@ class ApplicationPipeline implements Serializable {
     getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
+        getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
           var chartImages=getHelmChartValue(chartsFolders[i],"images")
           var zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
           for(image in chartImages){
-            if(image.key!="pullPolicy"){
+            if(image.key !="pullPolicy"){
+              getSteps().echo "found image ${image.key}:  ${image.value}"
               def imagePackages=zonarPackages.get(image.key)
-              for(zonarPackage in imagePackages){
+              for(zonarPackage in imagePackages) {
+                getSteps().echo "checking package ${zonarPackage.key}"
+                
                 if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
                   return true
                 }
@@ -560,7 +564,7 @@ class ApplicationPipeline implements Serializable {
             if(!isNewReleaseAvailable){
               getSteps().echo "No new packages available - stopping execution"
               getSteps().stage('Notify'){
-                notifyMessage = 'No new zonar releases detected - exiting timer build'
+                notifyMessage = 'No new packages available - exiting timer build'
                 getHelpers().sendSlack(
                     getPipeline().slack,notifyMessage,notifyColor)
               }
