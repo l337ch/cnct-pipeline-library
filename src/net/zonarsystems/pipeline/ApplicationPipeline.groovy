@@ -395,7 +395,7 @@ class ApplicationPipeline implements Serializable {
     bailOnUninitialized()
 
     def chartYaml = getScript().parseYaml {
-      yaml = getSteps().readFile("${directory}/Chart.yaml")
+      yaml = getSteps().readFile("${directory}/values.yaml")
     }
 
     return chartYaml[value]
