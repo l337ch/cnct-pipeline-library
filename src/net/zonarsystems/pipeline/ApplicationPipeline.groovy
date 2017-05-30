@@ -559,28 +559,29 @@ class ApplicationPipeline implements Serializable {
         // default message
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
-        def isNewReleaseAvailable = isNewZonarReleaseAvailable()
-        if(isJobStartedByTimer(getScript().currentBuild)) {
-          // check for new zonar release
-            if(!isNewReleaseAvailable){
-              getSteps().echo "No new packages available - stopping execution"
-              getSteps().stage('Notify'){
-                notifyMessage = 'No new packages available - exiting timer build'
-                getHelpers().sendSlack(
-                    getPipeline().slack,notifyMessage,notifyColor)
-              }
-              getScript().currentBuild.result = 'SUCCESS'
-              getSteps().sh "exit 0"
-              return;
-            } else {
-              getSteps().echo "New package(s) available - executing pipeline"
-            }
-        }
  
         try {
 
           // Checkout source code, from PR or master
           pipelineCheckout()
+          def isNewReleaseAvailable = isNewZonarReleaseAvailable()
+          
+          if(isJobStartedByTimer(getScript().currentBuild)) {
+            // check for new zonar release
+              if(!isNewReleaseAvailable){
+                getSteps().echo "No new packages available - stopping execution"
+                getSteps().stage('Notify'){
+                  notifyMessage = 'No new packages available - exiting timer build'
+                  getHelpers().sendSlack(
+                      getPipeline().slack,notifyMessage,notifyColor)
+                }
+                getScript().currentBuild.result = 'SUCCESS'
+                getSteps().sh "exit 0"
+                return;
+              } else {
+                getSteps().echo "New package(s) available - executing pipeline"
+              }
+          }
       
           // Inside jenkins-gke tool container
           getSteps().container('gke') { 
