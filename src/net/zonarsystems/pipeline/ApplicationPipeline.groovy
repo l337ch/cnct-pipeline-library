@@ -237,14 +237,13 @@ class ApplicationPipeline implements Serializable {
               for(zonarPackage in imagePackages){
                 def appVersion=getSteps().sh "docker run -it ${image.value} -- yum list installed ${zonarPackage.key} | awk 'END {print \$2 }'"
                 packageVersions["zonar_apps.${image.key}.${zonarPackage.key}"]=appVersion
-
               }
             }
 
           }
         }
       }
-      return packageVersionList
+      return packageVersions
     }
   }
 
