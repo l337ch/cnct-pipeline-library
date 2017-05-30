@@ -557,7 +557,6 @@ class ApplicationPipeline implements Serializable {
         def isNewReleaseAvailable = isNewZonarReleaseAvailable()
         if(isJobStartedByTimer(getScript().currentBuild)) {
           // check for new zonar release
-          getSteps().container('gke'){
             if(!isNewReleaseAvailable){
               getSteps().echo "No new packages available - stopping execution"
               getSteps().stage('Notify'){
@@ -566,12 +565,11 @@ class ApplicationPipeline implements Serializable {
                     getPipeline().slack,notifyMessage,notifyColor)
               }
               getScript().currentBuild.result = 'SUCCESS'
-              sh "exit 0"
+              getSteps().sh "exit 0"
               return;
             } else {
               getSteps().echo "New package(s) available - executing pipeline"
             }
-          }
         }
  
         try {
