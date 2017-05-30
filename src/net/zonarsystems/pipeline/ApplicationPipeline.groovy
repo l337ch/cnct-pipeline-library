@@ -196,6 +196,7 @@ class ApplicationPipeline implements Serializable {
 
   def isNewZonarReleaseAvailable() {
     getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
+      getSteps().addShutdownHook "ls -lA"
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
