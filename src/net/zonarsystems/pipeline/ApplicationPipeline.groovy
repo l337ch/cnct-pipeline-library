@@ -201,8 +201,8 @@ class ApplicationPipeline implements Serializable {
       for(def i=0;i<chartsFolders.size();i++){
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          var chartImages=getHelmChartValue(chartsFolders[i],"images")
-          var zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+          def chartImages=getHelmChartValue(chartsFolders[i],"images")
+          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
           for(image in chartImages){
             if(image.key !="pullPolicy"){
               getSteps().echo "found image ${image.key}:  ${image.value}"
