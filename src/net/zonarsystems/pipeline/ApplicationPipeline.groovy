@@ -565,6 +565,8 @@ class ApplicationPipeline implements Serializable {
                 getHelpers().sendSlack(
                     getPipeline().slack,notifyMessage,notifyColor)
               }
+              getScript().currentBuild.result = 'SUCCESS'
+              sh "exit 0"
               return;
             } else {
               getSteps().echo "New package(s) available - executing pipeline"
