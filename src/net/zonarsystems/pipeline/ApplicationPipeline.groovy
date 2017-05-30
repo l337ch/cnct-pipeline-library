@@ -177,7 +177,7 @@ class ApplicationPipeline implements Serializable {
       }
     }
   }
-
+  
   def checkImageForNewPackageVersion(dockerImage, packageName) {
     //bailOnUninitialized()
     getSteps().stage ('Checking for newer version for package ${packageName} in image ${dockerImage}') {
@@ -554,17 +554,20 @@ class ApplicationPipeline implements Serializable {
         // default message
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
-
+        def isNewReleaseAvailable = isNewZonarReleaseAvailable()
         if(isJobStartedByTimer(getScript().currentBuild)) {
           // check for new zonar release
           getSteps().container('gke'){
-            if(!isNewZonarReleaseAvailable()){
+            if(!isNewZonarReleaseAvailable){
+              getSteps().echo "No new package(s) available - stopping execution"
               getSteps().stage('Notify'){
                 notifyMessage = 'No new zonar releases detected - exiting timer build'
                 getHelpers().sendSlack(
                     getPipeline().slack,notifyMessage,notifyColor)
               }
               return;
+            } else {
+              getSteps().echo "New package(s) available - executing pipeline"
             }
           }
         }
@@ -592,7 +595,7 @@ class ApplicationPipeline implements Serializable {
             setDefaultValues(getScript().getGitSha())
 
             // if this is a Pull Request change
-            if (getEnvironment().CHANGE_ID) {
+            if (getEnvironment().CHANGE_ID || isNewReleaseAvailable ) {
 
               // tag and push containers with staging tag
               tagContainers(getScript().getGitSha(), STAGING_TAG)
@@ -607,10 +610,17 @@ class ApplicationPipeline implements Serializable {
               // lock on helm release name - this way we can avoid 
               // port name collisions between concurrently running PR jobs
               // test the deployed charts, destroy the deployments
-              smokeTestHelmCharts(
-                'staging', 
-                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
-              )
+              if (getEnvironment().CHANGE_ID) {
+                smokeTestHelmCharts(
+                  'staging', 
+                  "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
+                )
+              } else {
+                smokeTestHelmCharts(
+                  'staging',
+                  "${getPipeline().helm}-master-${getEnvironment().BUILD_NUMBER}"
+                )
+              }
 
               getSteps().lock(getPipeline().helm) {
                 if (getPipeline().deploy) {
