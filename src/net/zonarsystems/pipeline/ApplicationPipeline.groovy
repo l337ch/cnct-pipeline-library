@@ -1,4 +1,5 @@
 package net.zonarsystems.pipeline
+import java.awt.Component.BaselineResizeBehavior
 import java.util.regex.Pattern
 
 class ApplicationPipeline implements Serializable {
@@ -210,10 +211,11 @@ class ApplicationPipeline implements Serializable {
           def zonarPackages=helmChartValues.zonar_apps
           getSteps().echo "chart images: ${chartImages}"
           getSteps().echo "zonar packages: ${zonarPackages}"
-          getSteps().sh "ls"
+          
           if (chartImages) {
-            for(image in chartImages){
-              
+            for( j=0; j < chartImages.size(); j++){
+              def image = chartImages[j];
+              getSteps().sh "ls"
               if(image != null && image.key !="pullPolicy"){
                 getSteps().echo "found image ${image.key}:  ${image.value}"
                 if (zonarPackages) {
