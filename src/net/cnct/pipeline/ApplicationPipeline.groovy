@@ -1,4 +1,4 @@
-package net.zonarsystems.pipeline
+package net.cnct.pipeline
 import java.util.regex.Pattern
 
 class ApplicationPipeline implements Serializable {
