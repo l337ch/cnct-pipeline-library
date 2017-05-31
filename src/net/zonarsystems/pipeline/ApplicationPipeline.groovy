@@ -210,7 +210,7 @@ class ApplicationPipeline implements Serializable {
           def helmChartValues = getHelmChartValues(chartsFolders[i])
           
           def chartImages=entries(helmChartValues.images)
-          def zonarPackages=helmChartValues.zonar_apps)
+          def zonarPackages=helmChartValues.zonar_apps
           getSteps().echo "chart images: ${chartImages}"
           getSteps().echo "zonar packages: ${zonarPackages}"
           
