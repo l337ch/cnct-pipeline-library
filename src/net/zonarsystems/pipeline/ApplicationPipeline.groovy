@@ -200,10 +200,11 @@ class ApplicationPipeline implements Serializable {
       
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
-        getSteps().sh "ls"
+        
         chartPackageCheck:
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
+          getSteps().sh "ls"
           def chartImages=getHelmChartValue(chartsFolders[i],"images")
           def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
           getSteps().echo "chart images: ${chartImages}"
