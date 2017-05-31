@@ -195,9 +195,11 @@ class ApplicationPipeline implements Serializable {
   }
 
   def isNewZonarReleaseAvailable() {
+    def isNewRelease = false;
     getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
+        chartPackageCheck:
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
           def chartImages=getHelmChartValue(chartsFolders[i],"images")
@@ -211,15 +213,17 @@ class ApplicationPipeline implements Serializable {
               for(zonarPackage in imagePackages) {
                 getSteps().echo "checking package ${zonarPackage.key}"
                 
-                if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
-                  return true
-                }
+                //if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
+                //  isNewRelease = true
+                //  break chartPackageCheck
+                //}
               }
             }
 
           }
         }
       }
+      return isNewRelease;
     }
   }
 
