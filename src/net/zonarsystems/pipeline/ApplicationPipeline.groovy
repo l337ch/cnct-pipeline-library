@@ -195,6 +195,8 @@ class ApplicationPipeline implements Serializable {
     return false
   }
 
+  @NonCPS def entries(m) {m.collect {key, value -> [key, value]}}
+  
   def isNewZonarReleaseAvailable() {
     def isNewRelease = false;
     getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
@@ -212,8 +214,9 @@ class ApplicationPipeline implements Serializable {
           getSteps().echo "chart images: ${chartImages}"
           getSteps().echo "zonar packages: ${zonarPackages}"
           
+          
           if (chartImages) {
-            for( def j=0; j < chartImages.size(); j++){
+            for( def j=0; j < entries(chartImages).size(); j++){
               def image = chartImages[j];
               getSteps().echo "${image}"
               if(image != null && image.key !="pullPolicy"){
