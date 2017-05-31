@@ -213,10 +213,10 @@ class ApplicationPipeline implements Serializable {
               for(zonarPackage in imagePackages) {
                 getSteps().echo "checking package ${zonarPackage.key}"
                 
-                //if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
-                //  isNewRelease = true
-                //  break chartPackageCheck
-                //}
+                if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
+                  isNewRelease = true
+                  break chartPackageCheck
+                }
               }
             }
 
