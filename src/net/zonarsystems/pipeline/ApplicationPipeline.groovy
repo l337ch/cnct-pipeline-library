@@ -221,7 +221,7 @@ class ApplicationPipeline implements Serializable {
               def imageKey = image[0]
               def imageValue = image[1];
               getSteps().echo "${image}"
-              if(image != null && image.key !="pullPolicy"){
+              if(imageKey != null && imageKey !="pullPolicy"){
                 getSteps().echo "found image ${imageKey}:  ${imageValue}"
                 if (zonarPackages) {
                   def imagePackages=entries(zonarPackages.get(imageKey))
