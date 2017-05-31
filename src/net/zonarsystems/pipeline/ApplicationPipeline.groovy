@@ -234,7 +234,7 @@ class ApplicationPipeline implements Serializable {
                     
                     if(checkImageForNewPackageVersion(imageValue,packageKey)){
                       isNewRelease = true
-                      return true
+                      //return true
                       //break chartPackageCheck
                     }
                   }
