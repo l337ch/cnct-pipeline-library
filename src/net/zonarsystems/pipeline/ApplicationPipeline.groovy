@@ -231,7 +231,7 @@ class ApplicationPipeline implements Serializable {
                     def packageValue = zonarPackage[1];
                     getSteps().echo "checking package ${packageKey}"
                     
-                    if(checkImageForNewPackageVersion(packageKey)){
+                    if(checkImageForNewPackageVersion(imageValue,packageKey)){
                       isNewRelease = true
                       break chartPackageCheck
                     }
