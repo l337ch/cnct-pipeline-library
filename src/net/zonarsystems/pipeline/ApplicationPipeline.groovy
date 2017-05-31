@@ -197,6 +197,7 @@ class ApplicationPipeline implements Serializable {
   def isNewZonarReleaseAvailable() {
     def isNewRelease = false;
     getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
+      getSteps().sh "ls"
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
         chartPackageCheck:
@@ -212,7 +213,7 @@ class ApplicationPipeline implements Serializable {
               def imagePackages=zonarPackages.get(image.key)
               for(zonarPackage in imagePackages) {
                 getSteps().echo "checking package ${zonarPackage.key}"
-                getSteps().sh "ls"
+                
                 if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
                   isNewRelease = true
                   break chartPackageCheck
@@ -574,10 +575,11 @@ class ApplicationPipeline implements Serializable {
           // Inside jenkins-gke tool container
           getSteps().container('gke') {
             
-            def isNewReleaseAvailable = isNewZonarReleaseAvailable()
+            def isNewReleaseAvailable = false 
             
             if(isJobStartedByTimer(getScript().currentBuild)) {
-              // check for new zonar release
+                isNewReleaseAvailable = isNewZonarReleaseAvailable()
+                // check for new zonar release
                 if(!isNewReleaseAvailable){
                   getSteps().echo "No new packages available - stopping execution"
                   getSteps().stage('Notify'){
