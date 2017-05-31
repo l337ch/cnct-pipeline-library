@@ -213,7 +213,7 @@ class ApplicationPipeline implements Serializable {
           getSteps().echo "zonar packages: ${zonarPackages}"
           
           if (chartImages) {
-            for( j=0; j < chartImages.size(); j++){
+            for( def j=0; j < chartImages.size(); j++){
               def image = chartImages[j];
               getSteps().sh "ls"
               if(image != null && image.key !="pullPolicy"){
