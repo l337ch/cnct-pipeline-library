@@ -183,7 +183,7 @@ class ApplicationPipeline implements Serializable {
     getSteps().echo ("Checking for newer version of ${packageName} in image ${dockerImage}")
     //use yum to check the installed and available version
     getSteps().echo "gcloud docker -- run -it ${dockerImage} yum list installed ${packageName} | awk \'END {print \$2 }\'"
-    getSteps().sh "ls"
+    
     //def availableVersion = getSteps().sh(script: "gcloud docker -- run -it ${dockerImage} yum list available ${packageName} | awk \'END {print \$2 }\'", returnStdout: true)
     //getSteps().echo "${packageName} is at ${currentVersion} latest=${availableVersion}"
     //if (currentVersion != availableVersion) {
@@ -195,7 +195,7 @@ class ApplicationPipeline implements Serializable {
   }
 
   def isNewZonarReleaseAvailable() {
-    //getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
+    getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
       def chartsFolders=getScript().listFolders('./charts')
       for(def i=0;i<chartsFolders.size();i++){
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
@@ -220,7 +220,7 @@ class ApplicationPipeline implements Serializable {
           }
         }
       }
-    //}
+    }
   }
 
   /**
