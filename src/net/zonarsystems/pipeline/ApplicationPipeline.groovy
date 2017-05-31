@@ -210,21 +210,26 @@ class ApplicationPipeline implements Serializable {
           def helmChartValues = getHelmChartValues(chartsFolders[i])
           
           def chartImages=entries(helmChartValues.images)
-          def zonarPackages=entries(helmChartValues.zonar_apps)
+          def zonarPackages=helmChartValues.zonar_apps)
           getSteps().echo "chart images: ${chartImages}"
           getSteps().echo "zonar packages: ${zonarPackages}"
           
           
           if (chartImages) {
             for( def j=0; j < chartImages.size(); j++){
-              def image = chartImages[j];
+              def image = chartImages[j]
+              def imageKey = image[0]
+              def imageValue = image[1];
               getSteps().echo "${image}"
               if(image != null && image.key !="pullPolicy"){
-                getSteps().echo "found image ${image.key}:  ${image.value}"
+                getSteps().echo "found image ${imageKey}:  ${imageValue}"
                 if (zonarPackages) {
-                  def imagePackages=zonarPackages.get(image.key)
-                  for(zonarPackage in imagePackages) {
-                    getSteps().echo "checking package ${zonarPackage.key}"
+                  def imagePackages=entries(zonarPackages.get(imageKey))
+                  for(def k=0; k < imagePackages.size(); k++) {
+                    def zonarPackage = imagePackages[k];
+                    def packageKey = zonarPackage[0]
+                    def packageValue = zonarPackage[1];
+                    getSteps().echo "checking package ${packageKey}"
                     
                     if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
                       isNewRelease = true
