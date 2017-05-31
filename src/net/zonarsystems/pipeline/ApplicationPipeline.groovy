@@ -203,10 +203,11 @@ class ApplicationPipeline implements Serializable {
         
         chartPackageCheck:
         getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
-        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
+        if(getSteps().fileExists("${chartsFolders[i]}/values.yaml")){
+          def helmChartValues = getHelmChartValues(chartsFolders[i])
           getSteps().sh "ls"
-          def chartImages=getHelmChartValue(chartsFolders[i],"images")
-          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+          def chartImages=helmChartValues.images
+          def zonarPackages=helmChartValues.zonar_apps
           getSteps().echo "chart images: ${chartImages}"
           getSteps().echo "zonar packages: ${zonarPackages}"
           for(image in chartImages){
@@ -242,8 +243,9 @@ class ApplicationPipeline implements Serializable {
       def packageVersions=[:]
       for(def i=0;i<chartsFolders.size();i++){
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          def chartImages=getHelmChartValue(chartsFolders[i],"images")
-          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
+          def chartValues = getHelmChartValues(chartsFolders[i])
+          def chartImages = chartValues.images
+          def zonarPackages = chartValues.zonar_apps
 
           for(image in chartImages){
             if(image.key!="pullPolicy"){
@@ -399,14 +401,14 @@ class ApplicationPipeline implements Serializable {
     return chartYaml.version
   }
   
-  def getHelmChartValue(directory, value) {
+  def getHelmChartValues(directory) {
     bailOnUninitialized()
 
-    def chartYaml = getScript().parseYaml {
+    def valuesYaml = getScript().parseYaml {
       yaml = getSteps().readFile("${directory}/values.yaml")
     }
 
-    return chartYaml[value]
+    return valuesYaml
   }
 
   def updateChartVersionMetadata(sha) {
