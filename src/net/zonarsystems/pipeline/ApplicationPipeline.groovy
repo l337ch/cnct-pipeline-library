@@ -288,7 +288,7 @@ class ApplicationPipeline implements Serializable {
                     def packageKey = zonarPackage[0]
                     def packageValue = zonarPackage[1];
                     def appVersion=getSteps().sh(script: "gcloud docker -- run -it ${imageValue} yum list installed ${packageKey} | awk \'END {print \$2 }\'", returnStdout: true)
-                    packageVersions += "zonar_apps.${imageKey}.${packageKey}=${appVersion}"
+                    packageVersions += "zonar_apps.${imageKey}.${packageKey}=${appVersion}".trim()
                     
                   }
                 }
