@@ -257,7 +257,7 @@ class ApplicationPipeline implements Serializable {
   def getZonarAppVersionOverrides() {
     getSteps().stage('Getting Zonar package versions'){
       def chartsFolders=getScript().listFolders('./charts')
-      def packageVersions=[:]
+      def packageVersions=""
       for(def i=0;i<chartsFolders.size();i++){
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
           def chartValues = getHelmChartValues(chartsFolders[i])
@@ -276,12 +276,19 @@ class ApplicationPipeline implements Serializable {
 
               if(imageKey != "pullPolicy"){
                 def imagePackages=entries(zonarPackages.get(imageKey))
-                for(def k=0; k < imagePackages.size(); k++) {
-                  def zonarPackage = imagePackages[k];
-                  def packageKey = zonarPackage[0]
-                  def packageValue = zonarPackage[1];
-                  def appVersion=getSteps().sh(script: "gcloud docker -- run -it ${imageValue} yum list installed ${packageKey} | awk \'END {print \$2 }\'", returnStdout: true)
-                  packageVersions["zonar_apps.${imageKey}.${packageKey}"]=appVersion
+                if ( imagePackages.size() >0) {
+                  packageVersions += " --set "
+                  for(def k=0; k < imagePackages.size(); k++) {
+                    if (k != 0) {
+                      packageVersions += ","
+                    }
+                    def zonarPackage = imagePackages[k];
+                    def packageKey = zonarPackage[0]
+                    def packageValue = zonarPackage[1];
+                    def appVersion=getSteps().sh(script: "gcloud docker -- run -it ${imageValue} yum list installed ${packageKey} | awk \'END {print \$2 }\'", returnStdout: true)
+                    packageVersions += "zonar_apps.${imageKey}.${packageKey}=${appVersion}"
+                    
+                  }
                 }
               }
             }
@@ -555,8 +562,8 @@ class ApplicationPipeline implements Serializable {
       }
 
       def zonarVersionOverrides=getZonarAppVersionOverrides()
-      if(zonarVersionOverrides){res=res+zonarVersionOverrides.inject([]){ result,entry->
-          result<<"${entry.key}=${entry.value.toString()}"}.join(',')
+      if(zonarVersionOverrides){
+          res=res+zonarVersionOverrides
       }
 
     }
