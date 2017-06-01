@@ -284,7 +284,7 @@ class ApplicationPipeline implements Serializable {
                   packageVersions["zonar_apps.${imageKey}.${packageKey}"]=appVersion
                 }
               }
-
+            }
           }
         }
       }
