@@ -2,6 +2,8 @@ package net.zonarsystems.pipeline
 import java.awt.Component.BaselineResizeBehavior
 import java.util.regex.Pattern
 
+import javax.swing.text.html.HTMLDocument.FixedLengthDocument
+
 class ApplicationPipeline implements Serializable {
   def steps
   def application
@@ -277,7 +279,7 @@ class ApplicationPipeline implements Serializable {
               if(imageKey != "pullPolicy"){
                 def imagePackages=entries(zonarPackages.get(imageKey))
                 if ( imagePackages.size() >0) {
-                  packageVersions += " --set "
+                  //packageVersions += " --set "
                   for(def k=0; k < imagePackages.size(); k++) {
                     if (k != 0) {
                       packageVersions += ","
@@ -563,6 +565,9 @@ class ApplicationPipeline implements Serializable {
 
       def zonarVersionOverrides=getZonarAppVersionOverrides()
       if(zonarVersionOverrides){
+          if( res.length >0) {
+            res += ","
+          }
           res=res+zonarVersionOverrides
       }
 
