@@ -261,17 +261,29 @@ class ApplicationPipeline implements Serializable {
       for(def i=0;i<chartsFolders.size();i++){
         if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
           def chartValues = getHelmChartValues(chartsFolders[i])
-          def chartImages = chartValues.images
-          def zonarPackages = chartValues.zonar_apps
+          def chartImages=entries(helmChartValues.images)
+          def zonarPackages=helmChartValues.zonar_apps
+          getSteps().echo "chart images: ${chartImages}"
+          getSteps().echo "zonar packages: ${zonarPackages}"
+          
+          
+          if (chartImages) {
+            for( def j=0; j < chartImages.size(); j++){
+              def image = chartImages[j]
+              def imageKey = image[0]
+              def imageValue = image[1];
+              getSteps().echo "${image}"
 
-          for(image in chartImages){
-            if(image.key!="pullPolicy"){
-              def imagePackages=zonarPackages.get(image.key);
-              for(zonarPackage in imagePackages){
-                def appVersion=getSteps().sh "docker run -it ${image.value} -- yum list installed ${zonarPackage.key} | awk 'END {print \$2 }'"
-                packageVersions["zonar_apps.${image.key}.${zonarPackage.key}"]=appVersion
+              if(imageKey != "pullPolicy"){
+                def imagePackages=entries(zonarPackages.get(imageKey))
+                for(def k=0; k < imagePackages.size(); k++) {
+                  def zonarPackage = imagePackages[k];
+                  def packageKey = zonarPackage[0]
+                  def packageValue = zonarPackage[1];
+                  def appVersion=getSteps().sh(script: "gcloud docker -- run -it ${imageValue} yum list installed ${packageKey} | awk \'END {print \$2 }\'", returnStdout: true)
+                  packageVersions["zonar_apps.${imageKey}.${packageKey}"]=appVersion
+                }
               }
-            }
 
           }
         }
