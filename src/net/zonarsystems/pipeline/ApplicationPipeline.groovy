@@ -297,6 +297,7 @@ class ApplicationPipeline implements Serializable {
           }
         }
       }
+      getSteps().echo "overriding chart package versions: ${packageVersions}"
       return packageVersions
     }
   }
@@ -565,7 +566,6 @@ class ApplicationPipeline implements Serializable {
 
       def zonarVersionOverrides=getZonarAppVersionOverrides()
       if(zonarVersionOverrides){
-          getSteps().echo "overriding chart package versions: ${zonarVersionOverrides}"
           
           if( res.length >5) {
             res += ","
