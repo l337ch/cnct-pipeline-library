@@ -35,20 +35,6 @@ class ApplicationPipeline implements Serializable {
     this.overrides = overrides
   }
 
-  @NonCPS
-  def isJobStartedByTimer(build) {
-    def buildCauses = build.rawBuild.getCauses()
-    for ( buildCause in buildCauses ) {
-      if (buildCause != null) {
-        def causeDescription = buildCause.getShortDescription()
-        if (causeDescription.contains("Started by timer")) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
   def pipelineCheckout() {
     bailOnUninitialized()
 
@@ -175,85 +161,6 @@ class ApplicationPipeline implements Serializable {
           getSteps().sh "gcloud docker -- tag ${getSettings().dockerRegistry}/${imageName}:${currentTag} ${getSettings().dockerRegistry}/${imageName}:${newTag}"
         }
       }
-    }
-  }
-  
-  def checkImageForNewPackageVersion(dockerImage, packageName) {
-    //bailOnUninitialized()
-    getSteps().echo ("Checking for newer version of ${packageName} in image ${dockerImage}")
-    //use yum to check the installed and available version
-    getSteps().echo "gcloud docker -- run -it ${dockerImage} yum list installed ${packageName} | awk \'END {print \$2 }\'"
-    
-    //def availableVersion = getSteps().sh(script: "gcloud docker -- run -it ${dockerImage} yum list available ${packageName} | awk \'END {print \$2 }\'", returnStdout: true)
-    //getSteps().echo "${packageName} is at ${currentVersion} latest=${availableVersion}"
-    //if (currentVersion != availableVersion) {
-    //   getSteps().echo "${packageName} has newer version available: ${availableVersion}"
-    //   return true
-    //}
-      
-    return false
-  }
-
-  def isNewZonarReleaseAvailable() {
-    def isNewRelease = false;
-    getSteps().stage('Checking if Zonar has released new artifacts for this chart'){
-      def chartsFolders=getScript().listFolders('./charts')
-      for(def i=0;i<chartsFolders.size();i++){
-        chartPackageCheck:
-        getSteps().echo "checking for new packages in chart: ${chartsFolders[i]}"
-        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          def chartImages=getHelmChartValue(chartsFolders[i],"images")
-          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
-          getSteps().echo "chart images: ${chartImages}"
-          getSteps().echo "zonar packages: ${zonarPackages}"
-          for(image in chartImages){
-            if(image.key !="pullPolicy"){
-              getSteps().echo "found image ${image.key}:  ${image.value}"
-              def imagePackages=zonarPackages.get(image.key)
-              for(zonarPackage in imagePackages) {
-                getSteps().echo "checking package ${zonarPackage.key}"
-                getSteps().sh "ls"
-                if(checkImageForNewPackageVersion(image.value,zonarPackage.key)){
-                  isNewRelease = true
-                  break chartPackageCheck
-                }
-              }
-            }
-
-          }
-        }
-      }
-      return isNewRelease;
-    }
-  }
-
-  /**
-   * Returns the zonar application versions as a helm chart overridable list
-   * 
-   * @return a comma deliminated list of chart version proiperties
-   */
-  def getZonarAppVersionOverrides() {
-    getSteps().stage('Getting Zonar package versions'){
-      def chartsFolders=getScript().listFolders('./charts')
-      def packageVersions=[:]
-      for(def i=0;i<chartsFolders.size();i++){
-        if(getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")){
-          def chartImages=getHelmChartValue(chartsFolders[i],"images")
-          def zonarPackages=getHelmChartValue(chartsFolders[i],"zonar_apps")
-
-          for(image in chartImages){
-            if(image.key!="pullPolicy"){
-              def imagePackages=zonarPackages.get(image.key);
-              for(zonarPackage in imagePackages){
-                def appVersion=getSteps().sh "docker run -it ${image.value} -- yum list installed ${zonarPackage.key} | awk 'END {print \$2 }'"
-                packageVersions["zonar_apps.${image.key}.${zonarPackage.key}"]=appVersion
-              }
-            }
-
-          }
-        }
-      }
-      return packageVersions
     }
   }
 
@@ -394,16 +301,6 @@ class ApplicationPipeline implements Serializable {
 
     return chartYaml.version
   }
-  
-  def getHelmChartValue(directory, value) {
-    bailOnUninitialized()
-
-    def chartYaml = getScript().parseYaml {
-      yaml = getSteps().readFile("${directory}/values.yaml")
-    }
-
-    return chartYaml[value]
-  }
 
   def updateChartVersionMetadata(sha) {
     bailOnUninitialized()
@@ -518,12 +415,6 @@ class ApplicationPipeline implements Serializable {
           }.join(',')
         }
       }
-
-      def zonarVersionOverrides=getZonarAppVersionOverrides()
-      if(zonarVersionOverrides){res=res+zonarVersionOverrides.inject([]){ result,entry->
-          result<<"${entry.key}=${entry.value.toString()}"}.join(',')
-      }
-
     }
 
     return res 
@@ -564,35 +455,14 @@ class ApplicationPipeline implements Serializable {
         // default message
         def notifyMessage = 'Build succeeded for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL})"
         def notifyColor = 'good'
- 
+
         try {
 
           // Checkout source code, from PR or master
           pipelineCheckout()
-          
       
           // Inside jenkins-gke tool container
-          getSteps().container('gke') {
-            
-            def isNewReleaseAvailable = isNewZonarReleaseAvailable()
-            
-            if(isJobStartedByTimer(getScript().currentBuild)) {
-              // check for new zonar release
-                if(!isNewReleaseAvailable){
-                  getSteps().echo "No new packages available - stopping execution"
-                  getSteps().stage('Notify'){
-                    notifyMessage = 'No new packages available - exiting timer build'
-                    getHelpers().sendSlack(
-                        getPipeline().slack,notifyMessage,notifyColor)
-                  }
-                  getScript().currentBuild.result = 'SUCCESS'
-                  getSteps().sh "exit 0"
-                  return;
-                } else {
-                  getSteps().echo "New package(s) available - executing pipeline"
-                }
-            }
-             
+          getSteps().container('gke') { 
             // pull kubeconfig from GKE and init helm
             initKubeAndHelm()
 
@@ -609,7 +479,7 @@ class ApplicationPipeline implements Serializable {
             setDefaultValues(getScript().getGitSha())
 
             // if this is a Pull Request change
-            if (getEnvironment().CHANGE_ID || isNewReleaseAvailable ) {
+            if (getEnvironment().CHANGE_ID) {
 
               // tag and push containers with staging tag
               tagContainers(getScript().getGitSha(), STAGING_TAG)
@@ -624,17 +494,10 @@ class ApplicationPipeline implements Serializable {
               // lock on helm release name - this way we can avoid 
               // port name collisions between concurrently running PR jobs
               // test the deployed charts, destroy the deployments
-              if (getEnvironment().CHANGE_ID) {
-                smokeTestHelmCharts(
-                  'staging', 
-                  "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
-                )
-              } else {
-                smokeTestHelmCharts(
-                  'staging',
-                  "${getPipeline().helm}-master-${getEnvironment().BUILD_NUMBER}"
-                )
-              }
+              smokeTestHelmCharts(
+                'staging', 
+                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
+              )
 
               getSteps().lock(getPipeline().helm) {
                 if (getPipeline().deploy) {
@@ -663,7 +526,7 @@ class ApplicationPipeline implements Serializable {
                       getScript().getGitSha()
                     )
                   }
-                }
+                }                
               }
             }
           }
