@@ -430,7 +430,7 @@ class ApplicationPipeline implements Serializable {
     getSteps().properties(
       [
         getSteps().disableConcurrentBuilds(),
-        getSteps().parameters([string(name: 'CRONBUILD', defaultValue: false, description: 'Has this build been started by an external crontab')])
+        getSteps().parameters([getSteps().booleanParam(name: 'CRONBUILD', defaultValue: false, description: 'Has this build been started by an external crontab')])
       ]
     )
 
