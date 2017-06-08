@@ -38,6 +38,8 @@ if (isPRBuild()) {
     steps, 
     'pipelinelibrary', 
     this,
+    'https://github.com/samsung-cnct/zonar-pipeline.git',
+    'repo-scan-access',
     [],
     [],
     true

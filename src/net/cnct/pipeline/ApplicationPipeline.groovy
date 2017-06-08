@@ -23,19 +23,23 @@ class ApplicationPipeline implements Serializable {
   def uniqueJenkinsId = ''
 
   def forceFullBuild
+  def pipelineConfigRepo
+  def jenkinsCredentials
 
   final STAGING_TAG = "staging"
   final PROD_TAG = "prod"
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:], forceFullBuild = false) {
+  ApplicationPipeline(steps, application, script, pipelineConfigRepo, jenkinsCredentials, overrides = [:], e2e = [:], forceFullBuild = false) {
     this.steps = steps
     this.application = application
     this.script = script
     this.e2e = e2e
     this.overrides = overrides
     this.forceFullBuild = forceFullBuild
+    this.pipelineConfigRepo = pipelineConfigRepo
+    this.jenkinsCredentials = jenkinsCredentials
   }
 
   def pipelineCheckout() {
@@ -378,19 +382,20 @@ class ApplicationPipeline implements Serializable {
       containers: [getSteps().containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
       volumes: []) {
       getSteps().node ("env-${application}") {
+
         this.settings = getFileLoader().fromGit(
           'settings', 
-          'https://github.com/samsung-cnct/zonar-pipeline.git', 
+          getPipelineConfigRepo(), 
           'master', 
-          'repo-scan-access', 
+          getJenkinsCredentials(), 
           ''
         ).getConfig()
 
         def pipelineConfig = getFileLoader().fromGit(
           'pipeline', 
-          "https://github.com/samsung-cnct/zonar-pipeline.git", 
+          getPipelineConfigRepo(), 
           'master', 
-          "repo-scan-access", 
+          getJenkinsCredentials(), 
           ''
         ).getConfig()
 
