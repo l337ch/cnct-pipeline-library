@@ -8,18 +8,33 @@ def getLibrary() {
     
       if (env.CHANGE_ID) {
         print "testing library PR ${env.CHANGE_ID}"
-        return new Tuple(library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}"), true) 
+        return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
       } else {
-        return new Tuple(library('pipeline'), false)
+        return library('pipeline')
       }
     }
   }
 }
 
-def libTuple = getLibrary()
+def isPRBuild() {
+  podTemplate(
+    label: 'lib-init', 
+    containers: [containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
+    volumes: []) {
+    node ('lib-init') {
+    
+      if (env.CHANGE_ID) {
+        return true
+      } else {
+        return false
+      }
+    }
+  }
+}
 
-if (libTuple[1]) {
-  applicationPipeline = libTuple[0].net.cnct.pipeline.ApplicationPipeline.new(
+if (isPRBuild()) {
+  def lib = getLibrary()
+  applicationPipeline = lib.net.cnct.pipeline.ApplicationPipeline.new(
     steps, 
     'pipelinelibrary', 
     this,
