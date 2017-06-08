@@ -1,9 +1,9 @@
 @Library('pipeline')
-import net.zonarsystems.pipeline.ApplicationPipeline
+import net.cnct.pipeline.ApplicationPipeline
 
 
 def loadLibrary() {
-	applicationPipeline = new net.zonarsystems.pipeline.ApplicationPipeline(
+	applicationPipeline = new net.cnct.pipeline.ApplicationPipeline(
 	  node() {sh "unit test"}, 
 	  'pipelinelibrary', 
 	  this

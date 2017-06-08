@@ -22,17 +22,24 @@ class ApplicationPipeline implements Serializable {
   def ready = false
   def uniqueJenkinsId = ''
 
+  def forceFullBuild
+  def pipelineConfigRepo
+  def jenkinsCredentials
+
   final STAGING_TAG = "staging"
   final PROD_TAG = "prod"
 
   def bailOnUninitialized() { if (!this.ready) { throw new Exception('Pipeline not initialized, run init() first') } }
 
-  ApplicationPipeline(steps, application, script, overrides = [:], e2e = [:]) {
+  ApplicationPipeline(steps, application, script, pipelineConfigRepo, jenkinsCredentials, overrides = [:], e2e = [:], forceFullBuild = false) {
     this.steps = steps
     this.application = application
     this.script = script
     this.e2e = e2e
     this.overrides = overrides
+    this.forceFullBuild = forceFullBuild
+    this.pipelineConfigRepo = pipelineConfigRepo
+    this.jenkinsCredentials = jenkinsCredentials
   }
 
   def pipelineCheckout() {
@@ -375,19 +382,20 @@ class ApplicationPipeline implements Serializable {
       containers: [getSteps().containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
       volumes: []) {
       getSteps().node ("env-${application}") {
+
         this.settings = getFileLoader().fromGit(
           'settings', 
-          'https://github.com/samsung-cnct/zonar-pipeline.git', 
+          getPipelineConfigRepo(), 
           'master', 
-          'repo-scan-access', 
+          getJenkinsCredentials(), 
           ''
         ).getConfig()
 
         def pipelineConfig = getFileLoader().fromGit(
           'pipeline', 
-          "https://github.com/samsung-cnct/zonar-pipeline.git", 
+          getPipelineConfigRepo(), 
           'master', 
-          "repo-scan-access", 
+          getJenkinsCredentials(), 
           ''
         ).getConfig()
 
@@ -427,7 +435,7 @@ class ApplicationPipeline implements Serializable {
     getSteps().properties(
       [
         getSteps().disableConcurrentBuilds(),
-        getSteps().pipelineTriggers([getSteps().cron(getSettings().crontab)])
+        getSteps().parameters([getSteps().booleanParam(name: 'CRONBUILD', defaultValue: false, description: 'Has this build been started by an external crontab')])
       ]
     )
 
@@ -478,8 +486,11 @@ class ApplicationPipeline implements Serializable {
             // inject new tag into chart values.yaml
             setDefaultValues(getScript().getGitSha())
 
+            // Determine if we need to cover both PR and master code paths
+            def doFullBuildCycle = getForceFullBuild() || getScript().params.CRONBUILD.toBoolean() 
+
             // if this is a Pull Request change
-            if (getEnvironment().CHANGE_ID) {
+            if (getEnvironment().CHANGE_ID || doFullBuildCycle) {
 
               // tag and push containers with staging tag
               tagContainers(getScript().getGitSha(), STAGING_TAG)
@@ -507,7 +518,9 @@ class ApplicationPipeline implements Serializable {
                   )
                 }
               }
-            } else {
+            }
+
+            if (!getEnvironment().CHANGE_ID || doFullBuildCycle) {
               // tag and push containers with staging tag
               tagContainers(getScript().getGitSha(), PROD_TAG)
               pushContainersWithTag(PROD_TAG)

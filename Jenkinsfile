@@ -10,17 +10,40 @@ def getLibrary() {
         print "testing library PR ${env.CHANGE_ID}"
         return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
       } else {
-        print 'Testing library on master'
         return library('pipeline')
       }
     }
   }
 }
-def lib = getLibrary()
-applicationPipeline = lib.net.cnct.pipeline.ApplicationPipeline.new(
-  steps, 
-  'pipelinelibrary', 
-  this
-)
-applicationPipeline.init()
-applicationPipeline.pipelineRun()
+
+def isPRBuild() {
+  podTemplate(
+    label: 'lib-init', 
+    containers: [containerTemplate(name: 'jnlp', image: 'jenkinsci/jnlp-slave:2.62-alpine', args: '${computer.jnlpmac} ${computer.name}'),], 
+    volumes: []) {
+    node ('lib-init') {
+    
+      if (env.CHANGE_ID) {
+        return true
+      } else {
+        return false
+      }
+    }
+  }
+}
+
+if (isPRBuild()) {
+  def lib = getLibrary()
+  applicationPipeline = lib.net.cnct.pipeline.ApplicationPipeline.new(
+    steps, 
+    'pipelinelibrary', 
+    this,
+    'https://github.com/samsung-cnct/zonar-pipeline.git',
+    'repo-scan-access',
+    [],
+    [],
+    true
+  )
+  applicationPipeline.init()
+  applicationPipeline.pipelineRun()
+}

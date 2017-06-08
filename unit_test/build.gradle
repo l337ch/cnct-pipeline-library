@@ -97,7 +97,7 @@ task copySharedLibrary(type: Copy) {
 	}
 	
 
-	into 'build/classes/test/zonarsystems/pipeline/pipeline@master'
+	into 'build/classes/test/cnct/pipeline/pipeline@master'
 }
 
 test {

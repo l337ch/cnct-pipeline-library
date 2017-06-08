@@ -1,4 +1,4 @@
-package zonarsystems.pipeline
+package cnct.pipeline
 
 import com.lesfurets.jenkins.unit.cps.BasePipelineTestCPS
 
