@@ -1,9 +1,0 @@
-@Library('pipeline')
-
-def execute() {
-    node() {
-        
-    }
-}
-
-return this
