@@ -8,19 +8,25 @@ def getLibrary() {
     
       if (env.CHANGE_ID) {
         print "testing library PR ${env.CHANGE_ID}"
-        return library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}")
+        return new Tuple(library("pipeline@refs/remotes/origin/pr/${env.CHANGE_ID}"), true) 
       } else {
-        print 'Testing library on master'
-        return library('pipeline')
+        return new Tuple(library('pipeline'), false)
       }
     }
   }
 }
-def lib = getLibrary()
-applicationPipeline = lib.net.cnct.pipeline.ApplicationPipeline.new(
-  steps, 
-  'pipelinelibrary', 
-  this
-)
-applicationPipeline.init()
-applicationPipeline.pipelineRun()
+
+def libTuple = getLibrary()
+
+if (libTuple[1]) {
+  applicationPipeline = libTuple[0].net.cnct.pipeline.ApplicationPipeline.new(
+    steps, 
+    'pipelinelibrary', 
+    this,
+    [],
+    [],
+    true
+  )
+  applicationPipeline.init()
+  applicationPipeline.pipelineRun()
+}
