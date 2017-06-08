@@ -1,0 +1,27 @@
+@Library('pipeline')
+import net.cnct.pipeline.ApplicationPipeline
+
+
+def loadLibrary() {
+	applicationPipeline = new net.cnct.pipeline.ApplicationPipeline(
+	  node() {sh "unit test"}, 
+	  'pipelinelibrary', 
+	  this
+	)
+	
+	return applicationPipeline
+		
+
+
+}
+
+def execute() {
+	node() {
+    	stage('testing') {
+
+    	}
+    }
+}
+
+
+return this

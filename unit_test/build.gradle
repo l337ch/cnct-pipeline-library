@@ -1,0 +1,121 @@
+apply plugin: 'groovy'
+
+sourceSets {
+    jobs {
+        groovy {
+            srcDirs './src, ../'
+        }
+		compileClasspath += sourceSets.test.output
+		runtimeClasspath += sourceSets.test.output
+
+    }
+}
+
+
+repositories {
+    mavenCentral()
+    jcenter()
+    maven { url 'http://repo.jenkins-ci.org/releases/' }
+}
+
+configurations {
+    testPlugins {}
+}
+
+// Exclude buggy Xalan dependency this way the JRE default TransformerFactory is used
+// The xalan pulled in by htmlunit does not properly deal with spaces folder / job names
+configurations.all*.exclude group: 'xalan'
+
+dependencies {
+    testCompile 'org.yaml:snakeyaml:1.17'
+    testCompile 'org.codehaus.groovy:groovy-all:2.4.7'
+    testCompile "org.jenkins-ci.plugins:job-dsl-core:${jobDslVersion}"
+
+    testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+    testCompile 'cglib:cglib-nodep:2.2.2' // used by Spock
+
+    // Jenkins test harness dependencies
+    testCompile 'org.jenkins-ci.main:jenkins-test-harness:2.18'
+    testCompile "org.jenkins-ci.main:jenkins-war:${jenkinsVersion}"
+    testCompile "org.jenkins-ci.main:jenkins-war:${jenkinsVersion}:war-for-test@jar"
+
+    // Job DSL plugin including plugin dependencies
+    testCompile "org.jenkins-ci.plugins:job-dsl:${jobDslVersion}"
+    testCompile "org.jenkins-ci.plugins:job-dsl:${jobDslVersion}@jar"
+    testCompile 'org.jenkins-ci.plugins:structs:1.5@jar'
+    testCompile 'org.jenkins-ci.plugins:cloudbees-folder:5.16@jar'
+	
+	//used for pipeline library unit testing
+	testCompile group:'com.lesfurets', name:'jenkins-pipeline-unit', version:'1.0'
+	testCompile group: 'org.assertj', name: 'assertj-core',   version: '3.4.1'
+	testCompile group: 'junit', name: 'junit', version: '4.11'
+
+    // plugins to install in test instance
+    testPlugins 'org.jenkins-ci.plugins:ghprb:1.34.0'
+    testPlugins 'com.coravy.hudson.plugins.github:github:1.25.1'
+    testPlugins 'org.jenkins-ci.plugins:cloudbees-folder:5.16'
+    testPlugins 'org.jenkins-ci.plugins.workflow:workflow-multibranch:2.9.2'
+
+    // for the RestApiScriptRunner
+    compile('org.codehaus.groovy.modules.http-builder:http-builder:0.7.2') {
+        exclude(module: 'groovy')
+    }
+
+    // for the RestApiScriptRunner
+    compile('org.apache.ant:ant:1.9.7')
+	compile('com.lesfurets:jenkins-pipeline-unit:1.0')
+}
+
+task resolveTestPlugins(type: Copy) {
+    from configurations.testPlugins
+    into new File(sourceSets.test.output.resourcesDir, 'test-dependencies')
+    include '*.hpi'
+    include '*.jpi'
+    def mapping = [:]
+
+    doFirst {
+        configurations.testPlugins.resolvedConfiguration.resolvedArtifacts.each {
+            mapping[it.file.name] = "${it.name}.${it.extension}"
+        }
+    }
+    rename { mapping[it] }
+
+    doLast {
+        List<String> baseNames = source*.name.collect { mapping[it] }.collect { it[0..it.lastIndexOf('.') - 1] }
+        new File(destinationDir, 'index').setText(baseNames.join('\n'), 'UTF-8')
+    }
+}
+
+task copySharedLibrary(type: Copy) {
+	from('..') {
+		include '**'
+		exclude 'unit_test*'
+		exclude 'charts*'
+		exclude 'resource*'
+		exclude './*'
+		exclude '.*'
+	}
+	
+
+	into 'build/classes/test/cnct/pipeline/pipeline@master'
+}
+
+test {
+	
+    dependsOn tasks.resolveTestPlugins, copySharedLibrary
+    inputs.files sourceSets.jobs.groovy.srcDirs
+
+    exclude '**/XmlOutput.class'
+
+    // set build directory for Jenkins test harness, JENKINS-26331
+    systemProperty 'buildDirectory', project.buildDir.absolutePath
+}
+
+
+task pipelineLibUnitTest(dependsOn: test, type: JavaExec) {
+
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.14'
+}
