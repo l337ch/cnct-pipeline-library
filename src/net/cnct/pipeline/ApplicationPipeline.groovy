@@ -489,8 +489,27 @@ class ApplicationPipeline implements Serializable {
             // Determine if we need to cover both PR and master code paths
             def doFullBuildCycle = getForceFullBuild() || getScript().params.CRONBUILD.toBoolean() 
 
+            // modify success notification if required
+            if (doFullBuildCycle) {
+              if (getForceFullBuild()) {
+                notifyMessage = "Forced full ${notifyMessage}"
+              } else {
+                notifyMessage = "Timer-based ${notifyMessage}"
+              } 
+            }
+
             // if this is a Pull Request change
             if (getEnvironment().CHANGE_ID || doFullBuildCycle) {
+
+              // change id is not always available
+              def changeId = getEnvironment().CHANGE_ID
+              if (!getEnvironment().CHANGE_ID) {
+                if (getForceFullBuild()) {
+                  changeId = "FORCED"
+                } else {
+                  changeId = "TIMER"
+                }
+              }
 
               // tag and push containers with staging tag
               tagContainers(getScript().getGitSha(), STAGING_TAG)
@@ -507,7 +526,7 @@ class ApplicationPipeline implements Serializable {
               // test the deployed charts, destroy the deployments
               smokeTestHelmCharts(
                 'staging', 
-                "${getPipeline().helm}-${getEnvironment().CHANGE_ID}-${getEnvironment().BUILD_NUMBER}"
+                "${getPipeline().helm}-${changeId}-${getEnvironment().BUILD_NUMBER}"
               )
 
               getSteps().lock(getPipeline().helm) {
@@ -546,6 +565,14 @@ class ApplicationPipeline implements Serializable {
         } catch (e) {
           getScript().currentBuild.result = 'FAILURE'
           notifyMessage = 'Build failed for ' + "${getEnvironment().JOB_NAME} number ${getEnvironment().BUILD_NUMBER} (${getEnvironment().BUILD_URL}) : ${e.getMessage()}"
+          if (getForceFullBuild()) {
+            notifyMessage = "Forced full ${notifyMessage}"
+          }
+
+          if (getScript().params.CRONBUILD.toBoolean()) {
+            notifyMessage = "Timer-based ${notifyMessage}"
+          }
+
           notifyColor = 'danger'
           err = e
         } finally {
