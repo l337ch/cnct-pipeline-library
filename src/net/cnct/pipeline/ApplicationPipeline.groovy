@@ -505,9 +505,9 @@ class ApplicationPipeline implements Serializable {
               def changeId = getEnvironment().CHANGE_ID
               if (!getEnvironment().CHANGE_ID) {
                 if (getForceFullBuild()) {
-                  changeId = "FORCED"
+                  changeId = "forced"
                 } else {
-                  changeId = "TIMER"
+                  changeId = "timer"
                 }
               }
 
