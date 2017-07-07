@@ -1,5 +1,6 @@
 package net.cnct.pipeline
 import java.util.regex.Pattern
+import jenkins.model.Jenkins
 
 class ApplicationPipeline implements Serializable {
   def steps
@@ -107,29 +108,34 @@ class ApplicationPipeline implements Serializable {
   def buildContainersWithTag(imageTag) {
     bailOnUninitialized()
 
-    getSteps().stage ('Build docker containers') {
-      // if there is a docker file directly under rootfs - build it 
-      // and name the GCR repo after the pipeline name
-      // otherwise
-      // enumerate all the folders under rootfs and build Dockerfiles in each one
-      // name the GCR repo after foldername
+    getSteps().stage ("Build docker containers") {
       def dockerfileFolders = getScript().listFolders('./rootfs')
+      def stepsForParallel = [:]
+
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
-
-          if (getSteps().fileExists("${dockerfileFolders[i]}/Makefile")) {
-            getSteps().sh "make -C ${dockerfileFolders[i]}"
+          def dockerFileFolder = "${dockerfileFolders[i]}"
+          
+          def commandString = ""
+          if (getSteps().fileExists("${dockerFileFolder}/Makefile")) {
+            commandString = "make -C ${dockerfileFolders[i]}; "
           }
 
-          def useArtifactory = getSteps().sh(returnStatus: true, script: "grep \"ARG ARTIFACTORY_IP=\" ${dockerfileFolders[i]}/Dockerfile")
+          def useArtifactory = getSteps().sh(returnStatus: true, script: "grep \"ARG ARTIFACTORY_IP=\" ${dockerFileFolder}/Dockerfile")
           if (useArtifactory == 0) {
-            getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerfileFolders[i]}"
+            commandString = "${commandString}gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} --build-arg ARTIFACTORY_IP=${getScript().getHostIp(getSettings().artifactory)} ${dockerFileFolder}"
           } else {
-            getSteps().sh "gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} ${dockerfileFolders[i]}"
+            commandString = "${commandString}gcloud docker -- build -t ${getSettings().dockerRegistry}/${imageName}:${imageTag} ${dockerFileFolder}"
+          }
+
+          stepsForParallel["${imageName}"] = { 
+            getSteps().sh "${commandString}"
           }
         }
       }
+
+      getSteps().parallel stepsForParallel
     }
   }
 
@@ -143,12 +149,19 @@ class ApplicationPipeline implements Serializable {
       // enumerate all the folders under rootfs and build Dockerfiles in each one
       // name the GCR repo after foldername
       def dockerfileFolders = getScript().listFolders('./rootfs')
+      def stepsForParallel = [:]
+    
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
-          getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
+
+          stepsForParallel["${imageName}"] = { 
+            getSteps().sh "gcloud docker -- push ${getSettings().dockerRegistry}/${imageName}:${imageTag}"
+          }
         }
       }
+
+      getSteps().parallel stepsForParallel      
     }
   }
 
@@ -162,12 +175,19 @@ class ApplicationPipeline implements Serializable {
       // enumerate all the folders under rootfs and build Dockerfiles in each one
       // name the GCR repo after foldername
       def dockerfileFolders = getScript().listFolders('./rootfs')
+      def stepsForParallel = [:]
+
       for (def i = 0; i < dockerfileFolders.size(); i++) {
         if (getSteps().fileExists("${dockerfileFolders[i]}/Dockerfile")) {
           def imageName = dockerfileFolders[i].split('/').last()
-          getSteps().sh "gcloud docker -- tag ${getSettings().dockerRegistry}/${imageName}:${currentTag} ${getSettings().dockerRegistry}/${imageName}:${newTag}"
+
+          stepsForParallel["${imageName}"] = { 
+            getSteps().sh "gcloud docker -- tag ${getSettings().dockerRegistry}/${imageName}:${currentTag} ${getSettings().dockerRegistry}/${imageName}:${newTag}"
+          }
         }
       }
+
+      getSteps().parallel stepsForParallel
     }
   }
 
