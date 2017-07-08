@@ -168,7 +168,7 @@ class ApplicationPipeline implements Serializable {
   def tagContainers(currentTag, newTag) {
     bailOnUninitialized()
 
-    getSteps().stage ('Push docker containers') {
+    getSteps().stage ('Tag docker containers') {
       // if there is a docker file directly under rootfs - build it 
       // and name the GCR repo after the pipeline name
       // otherwise
