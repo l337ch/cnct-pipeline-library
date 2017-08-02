@@ -259,7 +259,9 @@ class ApplicationPipeline implements Serializable {
                 e2e = getE2e()
               }
 
-              getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
+              getSteps().retry(getSettings().maxRetry) {
+                getSteps().sh("ginkgo ./test/e2e/ -- ${e2eVars}")
+              }
             }
           } finally {
             if (getSteps().fileExists('./test/e2e/junit_1.xml')) {
