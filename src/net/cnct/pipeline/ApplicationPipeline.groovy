@@ -286,12 +286,11 @@ class ApplicationPipeline implements Serializable {
 
   def getReleaseName(chartName) {
     def releaseName = chartName
-    if (getPipeline().helm)
+    if (getPipeline().helm) {
       if (getPipeline().helm[chartName] != null) {
         releaseName = getPipeline().helm[chartName]
       }
     } 
-
     return releaseName
   }
   
