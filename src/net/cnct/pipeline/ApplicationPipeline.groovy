@@ -76,7 +76,11 @@ class ApplicationPipeline implements Serializable {
 
     getSteps().stage ('Deploy Helm chart(s)') {
       def chartName = getHelmChartName(directory)
-      def upgradeString = "helm upgrade ${getPipeline().helm} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(directory)} --install --namespace prod"
+
+      // get the release name for this chart
+      def releaseName = getReleaseName(chartName)
+
+      def upgradeString = "helm upgrade ${releaseName} ${getSettings().githubOrg}/${chartName} --version ${getHelmChartVersion(directory)} --install --namespace prod"
       
       def prodOverrides = getChartOverrides(getOverrides(), chartName, 'prod')
       if (prodOverrides) {
@@ -239,17 +243,23 @@ class ApplicationPipeline implements Serializable {
     }
   }
 
-  def e2eTestHelmCharts(namespace, releaseName) {
+  def e2eTestHelmCharts(namespace, releasePostfix) {
     bailOnUninitialized()
 
     getSteps().stage ('Helm chart(s) end to end testing') {
       def chartsFolders = getScript().listFolders('./charts')
       for (def i = 0; i < chartsFolders.size(); i++) {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
+          
+          def chartName = getHelmChartName(chartsFolders[i])
+
+          // get the release name for this chart
+          def releaseName = getReleaseName(chartName)
+
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            releaseName
+            "${releaseName}${releasePostfix}"
           )
 
           try {
@@ -273,8 +283,19 @@ class ApplicationPipeline implements Serializable {
       }
     }
   }
+
+  def getReleaseName(chartName) {
+    def releaseName = chartName
+    if (getPipeline().helm)
+      if (getPipeline().helm[chartName] != null) {
+        releaseName = getPipeline().helm[chartName]
+      }
+    } 
+
+    return releaseName
+  }
   
-  def smokeTestHelmCharts(namespace, releaseName) {
+  def smokeTestHelmCharts(namespace, releasePostfix) {
     bailOnUninitialized()
 
     getSteps().stage ('Determine if smoke testing necessary') {
@@ -283,22 +304,26 @@ class ApplicationPipeline implements Serializable {
         if (getSteps().fileExists("${chartsFolders[i]}/Chart.yaml")) {
           if (getPipeline().smoketest) {  
             def chartName = getHelmChartName(chartsFolders[i])
+
+            // get the release name for this chart
+            def releaseName = getReleaseName(chartName)
+
             try {
               deployHelmChartsFromPath(
                 chartsFolders[i],
                 'staging',
-                releaseName
+                "${releaseName}${releasePostfix}"
               )
               getSteps().stage ("execute smoke tests") {
                 getSteps().retry(getSettings().maxRetry) {
-                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
+                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName}${releasePostfix} --cleanup")
                   if (testStdout ==~ /(?s).*FAILED\:.*/) {
                     getSteps().error "Smoke test error: ${testStdout}"
                   } 
                 }
               }
             } finally {
-              deleteHelmRelease(releaseName)
+              deleteHelmRelease("${releaseName}${releasePostfix}")
             }
           }
         }
@@ -548,14 +573,14 @@ class ApplicationPipeline implements Serializable {
               // test the deployed charts, destroy the deployments
               smokeTestHelmCharts(
                 'staging', 
-                "${getPipeline().helm}-${changeId}-${getEnvironment().BUILD_NUMBER}"
+                "-${changeId}-${getEnvironment().BUILD_NUMBER}"
               )
 
               getSteps().lock(getPipeline().helm) {
                 if (getPipeline().deploy) {
                   e2eTestHelmCharts(
                     'staging', 
-                    "${getPipeline().helm}-e2e"
+                    "-e2e"
                   )
                 }
               }
