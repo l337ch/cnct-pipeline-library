@@ -254,12 +254,12 @@ class ApplicationPipeline implements Serializable {
           def chartName = getHelmChartName(chartsFolders[i])
 
           // get the release name for this chart
-          def releaseName = getReleaseName(chartName)
+          def releaseName = "${getReleaseName(chartName)}${releasePostfix}"
 
           deployHelmChartsFromPath(
             chartsFolders[i],
             'staging',  
-            "${releaseName}${releasePostfix}"
+            releaseName
           )
 
           try {
@@ -305,24 +305,24 @@ class ApplicationPipeline implements Serializable {
             def chartName = getHelmChartName(chartsFolders[i])
 
             // get the release name for this chart
-            def releaseName = getReleaseName(chartName)
+            def releaseName = "${getReleaseName(chartName)}${releasePostfix}"
 
             try {
               deployHelmChartsFromPath(
                 chartsFolders[i],
                 'staging',
-                "${releaseName}${releasePostfix}"
+                releaseName
               )
               getSteps().stage ("execute smoke tests") {
                 getSteps().retry(getSettings().maxRetry) {
-                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName}${releasePostfix} --cleanup")
+                  def testStdout = getSteps().sh(returnStdout: true, script: "helm test ${releaseName} --cleanup")
                   if (testStdout ==~ /(?s).*FAILED\:.*/) {
                     getSteps().error "Smoke test error: ${testStdout}"
                   } 
                 }
               }
             } finally {
-              deleteHelmRelease("${releaseName}${releasePostfix}")
+              deleteHelmRelease(releaseName)
             }
           }
         }
